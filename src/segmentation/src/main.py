@@ -21,7 +21,7 @@ import ros_numpy
 import tf
 
 from sensor_msgs.msg import Image, CameraInfo
-
+from geometry_msgs.msg import Point, PointStamped
 import numpy as np
 import cv2
 
@@ -37,9 +37,17 @@ def get_camera_matrix(camera_info_msg):
     return np.reshape(camera_info_msg.K,(3,3))
 
 def isolate_object_of_interest(image, cam_matrix, trans, rot):
-    segmented_image = tracking(image)
-    # points = segment_pointcloud(points, segmented_image, cam_matrix, trans, rot)
-    return None
+    x,y = tracking(image)
+    if x is None:
+        return None
+    point = Point()
+    point.x = x
+    point.y = y
+    point.z = 0
+    point_stamped = PointStamped()
+    point_stamped.point = point
+    point_stamped.header.stamp = rospy.Time.now()
+    return point_stamped
 
 class PointcloudProcess:
     """
@@ -50,6 +58,7 @@ class PointcloudProcess:
     def __init__(self, 
                        image_sub_topic,
                        cam_info_topic,
+                       depth_sub_topic,
                        state_estimate_pub_topic):
 
         self.num_steps = 0
@@ -59,12 +68,13 @@ class PointcloudProcess:
         # points_sub = message_filters.Subscriber(points_sub_topic, PointCloud2)
         image_sub = message_filters.Subscriber(image_sub_topic, Image)
         caminfo_sub = message_filters.Subscriber(cam_info_topic, CameraInfo)
+        depth_sub = message_filters.Subscriber(depth_sub_topic, PointCloud2)
 
         self._bridge = CvBridge()
         self.listener = tf.TransformListener()
         
         ##TODO: publish the state estiomate
-        # self.state_estimate_pub = rospy.Publisher(state_estimate_pub_topic, PointCloud2, queue_size=10)
+        self.state_estimate_pub = rospy.Publisher(state_estimate_pub_topic, PointStamped, queue_size=10)
         self.image_pub = rospy.Publisher('segmented_image', Image, queue_size=10)
         
         ts = message_filters.ApproximateTimeSynchronizer([ image_sub, caminfo_sub],
@@ -94,17 +104,18 @@ class PointcloudProcess:
                     tf.ConnectivityException, 
                     tf.ExtrapolationException):
                 return
-            points = isolate_object_of_interest(image, info, 
+            point_msg = isolate_object_of_interest(image, info, 
                 np.array(trans), np.array(rot))
-            # self.points_pub.publish(points_msg)
-            # print("Published segmented pointcloud at timestamp:",
-            #        points_msg.header.stamp.secs)
+            if point_msg is not None:
+                self.state_estimate_pub.publish(point_msg)
+                print("Published state estimate at timestamp:",
+                        point_msg.header.stamp.secs)
 
 def main():
     CAM_INFO_TOPIC = '/camera/color/camera_info'
     RGB_IMAGE_TOPIC = '/camera/color/image_raw'
     POINTS_TOPIC = '/camera/depth/color/points'
-    STATE_ESTIMATE_PUB_TOPIC = 'state_estimate'
+    STATE_ESTIMATE_PUB_TOPIC = '/state_estimate'
 
     rospy.init_node('realsense_listener')
     process = PointcloudProcess(RGB_IMAGE_TOPIC,
