@@ -24,10 +24,15 @@ greenLower = hsv_green_lower if use_hsv else rgb_green_lower
 greenUpper = hsv_green_upper if use_hsv else rgb_green_upper
 
 
-def tracking(frame):
+def tracking(frame, depth, depth_scale):
 	# resize the frame, blur it, and convert it to the HSV
 	# color space
+	print('frame shape:',np.shape(frame))
+	print('depth shape:',np.shape(depth))
 	frame = imutils.resize(frame, width=600)
+	depth = imutils.resize(depth, width=600)
+	print('frame shape after:',np.shape(frame))
+	print('depth shape after:',np.shape(depth))
 	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 	blurred = cv2.GaussianBlur(frame, (11, 11), 0)
 	if use_hsv:
@@ -61,10 +66,15 @@ def tracking(frame):
 		# centroid
 		c = max(cnts, key=cv2.contourArea)
 		((x, y), radius) = cv2.minEnclosingCircle(c)
-		print(x, y)
 		M = cv2.moments(c)
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
- 
+ 		
+		print(x, y)
+		distance = depth[int(y),int(x)] * depth_scale
+		print('center of detected object is ', distance, 'meters away')
+
+		depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2RGB)
+		print('depth new shape:', np.shape(depth))
 		# only proceed if the radius meets a minimum size
 		if radius > 10:
 			# draw the circle and centroid on the frame,
@@ -72,6 +82,9 @@ def tracking(frame):
 			cv2.circle(frame, (int(x), int(y)), int(radius),
 				(0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
+			cv2.circle(depth, (int(x), int(y)), int(radius),
+				(0, 255, 255), 2)
+			cv2.circle(depth, center, 5, (0, 0, 255), -1)
  	else:
  		x,y = None,None
 	# update the points queue
@@ -89,11 +102,15 @@ def tracking(frame):
 		# draw the connecting lines
 		thickness = int(np.sqrt(n / float(i + 1)) * 2.5)
 		cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
+		cv2.line(depth, pts[i - 1], pts[i], (0, 0, 255), thickness)
+
  
 	# show the frame to our screen
-	#plt.imshow(frame)
+	#plt.imshow(depth)
 	#plt.show()
 	cv2.imshow("Frame", frame)
+	print(depth.shape)
+	# depth = cv2.applyColorMap(cv2.cvtColor(depth, cv2.COLOR_BGR2GRAY), cv2.COLORMAP_AUTUMN)
+	cv2.imshow("Depth", depth)
 	cv2.waitKey(1)
-
 	return x,y
