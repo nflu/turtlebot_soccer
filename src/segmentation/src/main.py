@@ -33,9 +33,8 @@ from ball_tracking import tracking
 depth_scale = 1e-3  # measurements in mm convert to meter
 
 def get_camera_matrix(camera_info_msg):
-    # TODO: Return the camera intrinsic matrix as a 3x3 numpy array
+    # Return the camera intrinsic matrix as a 3x3 numpy array
     # by retreiving information from the CameraInfo ROS message.
-    # Hint: numpy.reshape may be useful here.
     return np.reshape(camera_info_msg.K,(3,3))
 
 def isolate_object_of_interest(image, cam_matrix, depth, trans, rot):

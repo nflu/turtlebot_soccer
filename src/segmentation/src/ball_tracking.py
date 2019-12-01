@@ -8,6 +8,7 @@ import imutils
 import time
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.pylab import cm
  
 # define the lower and upper boundaries of the "green"
 # ball in the HSV color space, then initialize the
@@ -15,11 +16,11 @@ from matplotlib import pyplot as plt
 hsv_green_lower = (29, 86, 6)
 hsv_green_upper = (64, 255, 255)
 
-rgb_green_lower = (50, 70, 40)
-rgb_green_upper = (100,120,80)
+rgb_green_lower = (63, 0, 52)
+rgb_green_upper = (255,55,140)
 n=20
 pts = deque(maxlen=n)
-use_hsv = True
+use_hsv = False
 greenLower = hsv_green_lower if use_hsv else rgb_green_lower
 greenUpper = hsv_green_upper if use_hsv else rgb_green_upper
 
@@ -29,20 +30,22 @@ def tracking(frame, depth, depth_scale):
 	# color space
 	print('frame shape:',np.shape(frame))
 	print('depth shape:',np.shape(depth))
-	frame = imutils.resize(frame, width=600)
-	depth = imutils.resize(depth, width=600)
+	#frame = imutils.resize(frame, width=600)
+	#depth = imutils.resize(depth, width=600)
 	print('frame shape after:',np.shape(frame))
 	print('depth shape after:',np.shape(depth))
-	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # TODO does this 
 	blurred = cv2.GaussianBlur(frame, (11, 11), 0)
 	if use_hsv:
+		# TODO and this line make sense? shouldn't it be RGB2HSV?
 		image = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 	else:
 		image = blurred
 
 	# print(hsv[int(hsv.shape[0]/2)][int(hsv.shape[1]/2)])
-	cv2.imwrite('tennis_ball_rgb.png',image)
-	cv2.imwrite('tennis_ball_frame_rgb.png',frame)
+	cv2.imwrite('image.png',image)
+	cv2.imwrite('frame.png',frame)
+	cv2.imwrite('blurred.png',blurred)
  
 	# construct a mask for the color "green", then perform
 	# a series of dilations and erosions to remove any small
@@ -58,7 +61,7 @@ def tracking(frame, depth, depth_scale):
 		cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 	center = None
- 
+ 	
 	# only proceed if at least one contour was found
 	if len(cnts) > 0:
 		# find the largest contour in the mask, then use
@@ -68,15 +71,14 @@ def tracking(frame, depth, depth_scale):
 		((x, y), radius) = cv2.minEnclosingCircle(c)
 		M = cv2.moments(c)
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
- 		
-		print(x, y)
+		print(int(x), int(y))
+		print(center)
 		distance = depth[int(y),int(x)] * depth_scale
 		print('center of detected object is ', distance, 'meters away')
-
-		depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2RGB)
-		print('depth new shape:', np.shape(depth))
+		depth = np.uint8(cm.jet(depth)*255)
+		depth = cv2.cvtColor(depth, cv2.COLOR_RGBA2BGR)
 		# only proceed if the radius meets a minimum size
-		if radius > 10:
+		if radius > 5:
 			# draw the circle and centroid on the frame,
 			# then update the list of tracked points
 			cv2.circle(frame, (int(x), int(y)), int(radius),
@@ -108,8 +110,11 @@ def tracking(frame, depth, depth_scale):
 	# show the frame to our screen
 	#plt.imshow(depth)
 	#plt.show()
+	if len(cnts) == 0:
+		depth = np.uint8(cm.jet(depth)*255)
+		depth = cv2.cvtColor(depth, cv2.COLOR_RGBA2BGR)
+	print('depth new shape:', np.shape(depth))
 	cv2.imshow("Frame", frame)
-	print(depth.shape)
 	# depth = cv2.applyColorMap(cv2.cvtColor(depth, cv2.COLOR_BGR2GRAY), cv2.COLORMAP_AUTUMN)
 	cv2.imshow("Depth", depth)
 	cv2.waitKey(1)
