@@ -1,18 +1,15 @@
 #!/usr/bin/env python
-"""Skeleton code for Lab 6
-Course: EECS C106A, Fall 2019
-Author: Amay Saxena
+"""
+Main file for perception module
 
-This file implements a ROS node that subscribes to topics for RGB images,
-pointclouds, and camera calibration info, and uses the functions you
-implemented to publish a segmented pointcloud to the topic /segmented_points.
+run this file by running
 
-Once you are confident in your implementation in image_segmentation.py and
-pointcloud_segmentation.py, run this file to begin publishing a segmented
-pointcloud.
+rosrun segmentation main.py
+
 """
 
-from __future__ import print_function
+#TODO rename segmentation to perception
+# use this https://answers.ros.org/question/28165/renaming-a-package/?answer=285084#post-id-285084
 from collections import deque
 
 import rospy
@@ -21,24 +18,23 @@ import ros_numpy
 import tf
 
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import PointStamped
 import numpy as np
-import cv2
-
-from cv_bridge import CvBridge
 
 from ball_tracking import tracking
+import argparse
 
 # TODO this can actually change should probably get from a topic
 depth_scale = 1e-3  # measurements in mm convert to meter
+
 
 def get_camera_matrix(camera_info_msg):
     # Return the camera intrinsic matrix as a 3x3 numpy array
     # by retreiving information from the CameraInfo ROS message.
     return np.reshape(camera_info_msg.K,(3,3))
 
+
 def isolate_object_of_interest(image, cam_matrix, depth, trans, rot):
-    print('before tracking')
     camera_point = tracking(image, depth, depth_scale, cam_matrix)
     if camera_point is None:
         return None, None
@@ -61,36 +57,42 @@ def isolate_object_of_interest(image, cam_matrix, depth, trans, rot):
     camera_point_stamped.header.frame_id = '/camera_aligned_depth_to_color_frame'
     return point_stamped, camera_point_stamped
 
-class PointcloudProcess:
-    """
-    Wraps the processing of a pointcloud from an input ros topic and publishing
-    to another PointCloud2 topic.
 
-    """
-    def __init__(self, 
-                       image_sub_topic,
-                       cam_info_topic,
-                       depth_sub_topic,
-                       state_estimate_pub_topic,
-                       state_estimate_camera_frame_pub_topic):
+class BallTrackingProcess:
 
-        self.num_steps = 0
+    def __init__(self,
+                 image_sub_topic,
+                 cam_info_topic,
+                 depth_sub_topic,
+                 ball_position_pub_topic,
+                 ball_position_camera_frame_pub_topic):
 
-        self.messages = deque([], 5)
-        self.pointcloud_frame = None
-        # points_sub = message_filters.Subscriber(points_sub_topic, PointCloud2)
+        # set up subscribers
         image_sub = message_filters.Subscriber(image_sub_topic, Image)
-        caminfo_sub = message_filters.Subscriber(cam_info_topic, CameraInfo)
+        cam_info_sub = message_filters.Subscriber(cam_info_topic, CameraInfo)
         depth_sub = message_filters.Subscriber(depth_sub_topic, Image)
 
-        self._bridge = CvBridge()
+        # needed to get transform between camera frame and AR tag frame
         self.listener = tf.TransformListener()
-        ##TODO: publish the state estimate
-        self.state_estimate_pub = rospy.Publisher(state_estimate_pub_topic, PointStamped, queue_size=10)
-        self.state_estimate_cam_frame_pub = rospy.Publisher(state_estimate_camera_frame_pub_topic, PointStamped, queue_size=10)
-        
-        ts = message_filters.ApproximateTimeSynchronizer([ image_sub, caminfo_sub, depth_sub],
-                                                          10, 0.1, allow_headerless=True)
+
+        #
+        self.ball_position_pub = rospy.Publisher(ball_position_pub_topic,
+                                                  PointStamped,
+                                                  queue_size=10)
+        self.state_estimate_cam_frame_pub = rospy.Publisher(ball_position_camera_frame_pub_topic,
+                                                            PointStamped,
+                                                            queue_size=10)
+
+        # messages will be formed from data from subscribers during callback
+        # then published
+        self.messages = deque([], 5)
+
+        ts = message_filters.ApproximateTimeSynchronizer([image_sub,
+                                                          cam_info_sub,
+                                                          depth_sub],
+                                                         10,
+                                                         0.1,
+                                                         allow_headerless=True)
         ts.registerCallback(self.callback)
 
     def callback(self, image, info, depth):
@@ -101,8 +103,7 @@ class PointcloudProcess:
         except Exception as e:
             rospy.logerr(e)
             return
-        self.num_steps += 1
-        self.messages.appendleft(( rgb_image, intrinsic_matrix, depth_image))
+        self.messages.appendleft((rgb_image, intrinsic_matrix, depth_image))
 
     def publish_once_from_queue(self):
         if self.messages:
@@ -118,37 +119,54 @@ class PointcloudProcess:
                     tf.ExtrapolationException) as e:
                 print(e)
                 return
-            world_point_msg, camera_point_msg = isolate_object_of_interest(image, info, depth,
-                np.array(trans), np.array(rot))
+            world_point_msg, camera_point_msg = isolate_object_of_interest(image,
+                                                                           info,
+                                                                           depth,
+                                                                           np.array(trans),
+                                                                           np.array(rot))
             if world_point_msg is not None:
                 self.state_estimate_pub.publish(world_point_msg)
                 self.state_estimate_cam_frame_pub.publish(camera_point_msg)
                 print("Published state estimate at timestamp:",
                         world_point_msg.header.stamp.secs)
 
+
 def main():
-    print('here1')
-    #CAM_INFO_TOPIC = '/camera/color/camera_info'
-    CAM_INFO_TOPIC = '/camera/aligned_depth_to_color/camera_info'
-    DEPTH_TOPIC = '/camera/aligned_depth_to_color/image_raw'
-    RGB_IMAGE_TOPIC = '/camera/color/image_raw'
-    # POINTS_TOPIC = '/camera/depth/color/points'
-    #DEPTH_TOPIC = '/camera/depth/image_rect_raw'
-    STATE_ESTIMATE_PUB_TOPIC = '/state_estimate'
-    STATE_ESTIMATE_IN_CAMERA_FRAME_TOPIC = '/state_estimate_camera_frame'
 
+    # set up command line arguments
+    parser = argparse.ArgumentParser(description="Perception Module")
+    parser.add_argument("-a", "--ar_tag_number", type=str,
+                        help="defaults to 13")  # optional
+    parser.add_argument('--debug', action='debug')  # optional
+
+    # parse arguments
+    args = parser.parse_args()
+    ar_tag_number = args.ar_tag_number if args.ar_tag_number else '15'
+    debug = args.debug
+
+    # subscription topics
+    rgb_topic = '/camera/color/image_raw'
+    cam_info_topic = '/camera/aligned_depth_to_color/camera_info'
+    depth_topic = '/camera/aligned_depth_to_color/image_raw'
+
+    # publishing topics
+    ball_position_world_topic = '/ball_position_world'
+    ball_position_camera_topic = '/state_estimate_camera' if debug else None
+
+    # setup ros subs, pubs and connect to realsense
     rospy.init_node('realsense_listener')
-    process = PointcloudProcess(RGB_IMAGE_TOPIC,
-                                CAM_INFO_TOPIC, DEPTH_TOPIC, 
-                                STATE_ESTIMATE_PUB_TOPIC, 
-                                STATE_ESTIMATE_IN_CAMERA_FRAME_TOPIC)
+    process = BallTrackingProcess(rgb_topic,
+                                  cam_info_topic,
+                                  depth_topic,
+                                  ball_position_world_topic,
+                                  ball_position_camera_topic)
     r = rospy.Rate(1000)
-    print('here2')
 
-
+    # run perception
     while not rospy.is_shutdown():
         process.publish_once_from_queue()
         r.sleep()
+
 
 if __name__ == '__main__':
     main()
