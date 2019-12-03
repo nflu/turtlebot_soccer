@@ -45,9 +45,9 @@ def tracking(frame, depth, depth_scale, cam_matrix):
 		image = blurred
 
 	# print(hsv[int(hsv.shape[0]/2)][int(hsv.shape[1]/2)])
-	cv2.imwrite('image.png',image)
-	cv2.imwrite('frame.png',frame)
-	cv2.imwrite('blurred.png',blurred)
+	#cv2.imwrite('image.png',image)
+	#cv2.imwrite('frame.png',frame)
+	#cv2.imwrite('blurred.png',blurred)
  
 	# construct a mask for the color "green", then perform
 	# a series of dilations and erosions to remove any small
@@ -117,7 +117,7 @@ def tracking(frame, depth, depth_scale, cam_matrix):
 	if len(cnts) == 0:
 		depth = np.uint8(cm.jet(depth)*255)
 		depth = cv2.cvtColor(depth, cv2.COLOR_RGBA2BGR)
-	cv2.imwrite('depth.png',depth)
+	#cv2.imwrite('depth.png',depth)
 	print('depth new shape:', np.shape(depth))
 	cv2.imshow("Frame", frame)
 	# depth = cv2.applyColorMap(cv2.cvtColor(depth, cv2.COLOR_BGR2GRAY), cv2.COLORMAP_AUTUMN)
