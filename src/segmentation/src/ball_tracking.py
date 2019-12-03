@@ -24,16 +24,18 @@ use_hsv = False
 greenLower = hsv_green_lower if use_hsv else rgb_green_lower
 greenUpper = hsv_green_upper if use_hsv else rgb_green_upper
 
+def pixel_to_point(u,v,w,cam_matrix):
+	u*=w
+	v*=w
+	x,y,z = np.linalg.solve(cam_matrix, np.array([u,v,w]))
+	return np.array([z,-x,-y])
 
-def tracking(frame, depth, depth_scale):
+def tracking(frame, depth, depth_scale, cam_matrix):
 	# resize the frame, blur it, and convert it to the HSV
 	# color space
-	print('frame shape:',np.shape(frame))
-	print('depth shape:',np.shape(depth))
-	#frame = imutils.resize(frame, width=600)
-	#depth = imutils.resize(depth, width=600)
-	print('frame shape after:',np.shape(frame))
-	print('depth shape after:',np.shape(depth))
+	# print('frame shape:',np.shape(frame))
+	# print('depth shape:',np.shape(depth))
+	print('start of tracking')
 	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # TODO does this 
 	blurred = cv2.GaussianBlur(frame, (11, 11), 0)
 	if use_hsv:
@@ -77,6 +79,8 @@ def tracking(frame, depth, depth_scale):
 		print('center of detected object is ', distance, 'meters away')
 		depth = np.uint8(cm.jet(depth)*255)
 		depth = cv2.cvtColor(depth, cv2.COLOR_RGBA2BGR)
+		point = pixel_to_point(x, y, distance, cam_matrix)
+		print('point:', point)
 		# only proceed if the radius meets a minimum size
 		if radius > 5:
 			# draw the circle and centroid on the frame,
@@ -88,7 +92,7 @@ def tracking(frame, depth, depth_scale):
 				(0, 255, 255), 2)
 			cv2.circle(depth, center, 5, (0, 0, 255), -1)
  	else:
- 		x,y = None,None
+ 		point = None
 	# update the points queue
 	pts.appendleft(center)
 
@@ -113,9 +117,11 @@ def tracking(frame, depth, depth_scale):
 	if len(cnts) == 0:
 		depth = np.uint8(cm.jet(depth)*255)
 		depth = cv2.cvtColor(depth, cv2.COLOR_RGBA2BGR)
+	cv2.imwrite('depth.png',depth)
 	print('depth new shape:', np.shape(depth))
 	cv2.imshow("Frame", frame)
 	# depth = cv2.applyColorMap(cv2.cvtColor(depth, cv2.COLOR_BGR2GRAY), cv2.COLORMAP_AUTUMN)
 	cv2.imshow("Depth", depth)
+	cv2.imshow("Mask", mask)
 	cv2.waitKey(1)
-	return x,y
+	return point

@@ -29,7 +29,7 @@ from cv_bridge import CvBridge
 
 from ball_tracking import tracking
 
-
+# TODO this can actually change should probably get from a topic
 depth_scale = 1e-3  # measurements in mm convert to meter
 
 def get_camera_matrix(camera_info_msg):
@@ -38,17 +38,28 @@ def get_camera_matrix(camera_info_msg):
     return np.reshape(camera_info_msg.K,(3,3))
 
 def isolate_object_of_interest(image, cam_matrix, depth, trans, rot):
-    x,y = tracking(image, depth, depth_scale) 
-    if x is None:
-        return None
-    point = Point()
-    point.x = x
-    point.y = y
-    point.z = 0
+    print('before tracking')
+    camera_point = tracking(image, depth, depth_scale, cam_matrix)
+    if camera_point is None:
+        return None, None
+    world_point = np.dot(rot, camera_point) + trans
+    x, y, z = world_point 
+    print('transformed point', world_point) 
     point_stamped = PointStamped()
-    point_stamped.point = point
+    point_stamped.point.x = x
+    point_stamped.point.y = y
+    point_stamped.point.z = z
     point_stamped.header.stamp = rospy.Time.now()
-    return point_stamped
+    point_stamped.header.frame_id = '/ar_marker_13'
+
+    x, y, z = camera_point 
+    camera_point_stamped = PointStamped()
+    camera_point_stamped.point.x = x
+    camera_point_stamped.point.y = y
+    camera_point_stamped.point.z = z
+    camera_point_stamped.header.stamp = rospy.Time.now()
+    camera_point_stamped.header.frame_id = '/camera_aligned_depth_to_color_frame'
+    return point_stamped, camera_point_stamped
 
 class PointcloudProcess:
     """
@@ -60,7 +71,8 @@ class PointcloudProcess:
                        image_sub_topic,
                        cam_info_topic,
                        depth_sub_topic,
-                       state_estimate_pub_topic):
+                       state_estimate_pub_topic,
+                       state_estimate_camera_frame_pub_topic):
 
         self.num_steps = 0
 
@@ -73,10 +85,9 @@ class PointcloudProcess:
 
         self._bridge = CvBridge()
         self.listener = tf.TransformListener()
-        
-        ##TODO: publish the state estiomate
+        ##TODO: publish the state estimate
         self.state_estimate_pub = rospy.Publisher(state_estimate_pub_topic, PointStamped, queue_size=10)
-        self.image_pub = rospy.Publisher('segmented_image', Image, queue_size=10)
+        self.state_estimate_cam_frame_pub = rospy.Publisher(state_estimate_camera_frame_pub_topic, PointStamped, queue_size=10)
         
         ts = message_filters.ApproximateTimeSynchronizer([ image_sub, caminfo_sub, depth_sub],
                                                           10, 0.1, allow_headerless=True)
@@ -98,32 +109,42 @@ class PointcloudProcess:
             image, info, depth = self.messages.pop()
             try:
                 trans, rot = self.listener.lookupTransform(
-                                                       '/camera_color_optical_frame',
-                                                       '/camera_depth_optical_frame',
+                                                       '/ar_marker_13',
+                                                       '/camera_aligned_depth_to_color_frame',
                                                        rospy.Time(0))
                 rot = tf.transformations.quaternion_matrix(rot)[:3, :3]
             except (tf.LookupException,
                     tf.ConnectivityException, 
-                    tf.ExtrapolationException):
+                    tf.ExtrapolationException) as e:
+                print(e)
                 return
-            point_msg = isolate_object_of_interest(image, info, depth,
+            world_point_msg, camera_point_msg = isolate_object_of_interest(image, info, depth,
                 np.array(trans), np.array(rot))
-            if point_msg is not None:
-                self.state_estimate_pub.publish(point_msg)
+            if world_point_msg is not None:
+                self.state_estimate_pub.publish(world_point_msg)
+                self.state_estimate_cam_frame_pub.publish(camera_point_msg)
                 print("Published state estimate at timestamp:",
-                        point_msg.header.stamp.secs)
+                        world_point_msg.header.stamp.secs)
 
 def main():
-    CAM_INFO_TOPIC = '/camera/color/camera_info'
+    print('here1')
+    #CAM_INFO_TOPIC = '/camera/color/camera_info'
+    CAM_INFO_TOPIC = '/camera/aligned_depth_to_color/camera_info'
+    DEPTH_TOPIC = '/camera/aligned_depth_to_color/image_raw'
     RGB_IMAGE_TOPIC = '/camera/color/image_raw'
     # POINTS_TOPIC = '/camera/depth/color/points'
-    DEPTH_TOPIC = '/camera/depth/image_rect_raw'
+    #DEPTH_TOPIC = '/camera/depth/image_rect_raw'
     STATE_ESTIMATE_PUB_TOPIC = '/state_estimate'
+    STATE_ESTIMATE_IN_CAMERA_FRAME_TOPIC = '/state_estimate_camera_frame'
 
     rospy.init_node('realsense_listener')
     process = PointcloudProcess(RGB_IMAGE_TOPIC,
-                                CAM_INFO_TOPIC, DEPTH_TOPIC, STATE_ESTIMATE_PUB_TOPIC)
+                                CAM_INFO_TOPIC, DEPTH_TOPIC, 
+                                STATE_ESTIMATE_PUB_TOPIC, 
+                                STATE_ESTIMATE_IN_CAMERA_FRAME_TOPIC)
     r = rospy.Rate(1000)
+    print('here2')
+
 
     while not rospy.is_shutdown():
         process.publish_once_from_queue()
