@@ -47,7 +47,7 @@ class RealsensePerceptionProcess:
                  cam_info_topic,
                  depth_topic,
                  state_estimate_topic,
-                 state_est_cam_frame_topic=None,
+                 cam_state_est_topic=None,
                  verbosity=0,
                  max_deque_size=5,
                  queue_size=10,
@@ -65,7 +65,7 @@ class RealsensePerceptionProcess:
         README for details
         :param state_estimate_topic: topic that state estimate of the ball
         location in world frame will be published to
-        :param state_est_cam_frame_topic: topic that state estimate of the ball
+        :param cam_state_est_topic: topic that state estimate of the ball
         in the camera frame will be published to. This is useful for debugging
         in rviz
         :param world_frame: name of world frame that position of ball will be
@@ -98,10 +98,10 @@ class RealsensePerceptionProcess:
         self.state_estimate_pub = rospy.Publisher(state_estimate_topic,
                                                   PointStamped,
                                                   queue_size=queue_size)
-        if state_est_cam_frame_topic is None:
+        if cam_state_est_topic is None:
             self.debug_pub = None
         else:
-            self.debug_pub = rospy.Publisher(state_est_cam_frame_topic,
+            self.debug_pub = rospy.Publisher(cam_state_est_topic,
                                              PointStamped,
                                              queue_size=queue_size)
 
@@ -223,14 +223,18 @@ def main():
 
     # set up command line arguments
     parser = argparse.ArgumentParser(description="Perception Module")
-    parser.add_argument("-a", "--ar_tag_number", type=str,
-                        help="defaults to 13")  # optional
-    parser.add_argument('--debug', action='debug')  # optional
+    parser.add_argument('-a', '--ar_tag_number', type=str,
+                        help='defaults to 13')
+    parser.add_argument('--verbosity', type=int, help='defaults to 0')
 
     # parse arguments
     args = parser.parse_args()
     ar_tag_number = args.ar_tag_number if args.ar_tag_number else '15'
-    debug = args.debug
+    verbosity = args.verbosity
+
+    # frames
+    world_frame = '/ar_marker_' + str(ar_tag_number)
+    camera_frame = '/camera_aligned_depth_to_color_frame'
 
     # subscription topics
     rgb_topic = '/camera/color/image_raw'
@@ -238,17 +242,19 @@ def main():
     depth_topic = '/camera/aligned_depth_to_color/image_raw'
 
     # publishing topics
-    ball_position_world_topic = '/ball_position_world'
-    ball_position_camera_topic = '/state_estimate_camera' if debug else None
+    state_est_topic = '/state_estimate'
+    cam_state_est_topic = '/state_estimate_camera_frame'
 
     # setup ros subs, pubs and connect to realsense
     rospy.init_node('realsense_listener')
-    process = RealsensePerceptionProcess(rgb_topic,
-                                         cam_info_topic,
-                                         depth_topic,
-                                         ball_position_world_topic,
-                                         ball_position_camera_topic,
-                                         debug)
+    process = RealsensePerceptionProcess(world_frame=world_frame,
+                                         camera_frame=camera_frame,
+                                         rgb_topic=rgb_topic,
+                                         cam_info_topic=cam_info_topic,
+                                         depth_topic=depth_topic,
+                                         state_estimate_topic=state_est_topic,
+                                         cam_state_est_topic=cam_state_est_topic,
+                                         verbosity=verbosity)
     r = rospy.Rate(1000)
 
     # run perception
