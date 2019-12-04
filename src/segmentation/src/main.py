@@ -229,7 +229,7 @@ def main():
 
     # parse arguments
     args = parser.parse_args()
-    ar_tag_number = args.ar_tag_number if args.ar_tag_number else '15'
+    ar_tag_number = args.ar_tag_number if args.ar_tag_number else '13'
     verbosity = args.verbosity
 
     # frames

@@ -66,7 +66,7 @@ def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
     else:
         image = blurred
         lower = rgb_lower
-        upper = rgb_lower
+        upper = rgb_upper
 
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
@@ -93,13 +93,20 @@ def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
                   int(moments["m01"] / moments["m00"]))
 
         # get distance to center and find location of point in camera frame
-        distance = depth[int(y), int(x)] * depth_scale
-        point = pixel_to_point(x, y, distance, cam_matrix)
+        distance = depth[int(y), int(x)] * depth_scale            
+        
+        # depth sensor reads 0.0 when it can't compute depth for pixel
+        if distance == 0.0:
+            point = None
+        else:
+            point = pixel_to_point(x, y, distance, cam_matrix)
+
 
         if verbosity >= 1:
             print(int(x), int(y))
             print(center)
-            print('center of detected object is ', distance, 'meters away')
+            if distance != 0.0:
+                print('center of detected object is ', distance, 'meters away')
 
         # convert depth to rgb so it will display colors well need to convert
         # before drawing circle and center below
