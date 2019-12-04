@@ -48,7 +48,7 @@ class RealsensePerceptionProcess:
                  depth_topic,
                  state_estimate_topic,
                  cam_state_est_topic=None,
-                 verbosity=0,
+                 verbosity=2,
                  max_deque_size=5,
                  queue_size=10,
                  slop=0.1):
@@ -223,14 +223,13 @@ def main():
 
     # set up command line arguments
     parser = argparse.ArgumentParser(description="Perception Module")
-    parser.add_argument('-a', '--ar_tag_number', type=str,
-                        help='defaults to 13')
-    parser.add_argument('--verbosity', type=int, help='defaults to 0')
+    parser.add_argument('--ar_tag_number', type=str, help='defaults to 13')
+    parser.add_argument('--verbosity', type=int, help='defaults to 2')
 
     # parse arguments
     args = parser.parse_args()
     ar_tag_number = args.ar_tag_number if args.ar_tag_number else '13'
-    verbosity = args.verbosity
+    verbosity = args.verbosity if args.ar_tag_number else 2
 
     # frames
     world_frame = '/ar_marker_' + str(ar_tag_number)
