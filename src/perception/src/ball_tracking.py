@@ -131,7 +131,6 @@ def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
         # if either of the tracked points are None, ignore them
         if pts[i - 1] is None or pts[i] is None:
             continue
- 
         # otherwise, compute the thickness of the line and draw the connecting
         # lines
         thickness = int(np.sqrt(n / float(i + 1)) * 2.5)
