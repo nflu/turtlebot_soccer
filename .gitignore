@@ -9,7 +9,5 @@ build/
 devel/
 frames.gv
 frames.pdf
-CMakeLists.txt
 .DS_Store
-package.xml
 .idea

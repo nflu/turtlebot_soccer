@@ -4,12 +4,10 @@ Main file for perception module
 
 run this file by running
 
-rosrun segmentation main.py
+rosrun perception main.py
 
 """
 
-#TODO rename segmentation to perception
-# use this https://answers.ros.org/question/28165/renaming-a-package/?answer=285084#post-id-285084
 from collections import deque
 
 import rospy
@@ -155,6 +153,7 @@ class RealsensePerceptionProcess:
                 trans, rot = self.listener.lookupTransform(self.world_frame,
                                                            self.camera_frame,
                                                            rospy.Time(0))
+                # TODO what does this rospy.Time(0) do?
                 # convert quaternion into 3x3 matrix
                 rot = tf.transformations.quaternion_matrix(rot)[:3, :3]
             except (tf.LookupException,
