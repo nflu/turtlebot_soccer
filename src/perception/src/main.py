@@ -4,12 +4,10 @@ Main file for perception module
 
 run this file by running
 
-rosrun segmentation main.py
+rosrun perception main.py
 
 """
 
-#TODO rename segmentation to perception
-# use this https://answers.ros.org/question/28165/renaming-a-package/?answer=285084#post-id-285084
 from collections import deque
 
 import rospy
