@@ -153,6 +153,7 @@ class RealsensePerceptionProcess:
                 trans, rot = self.listener.lookupTransform(self.world_frame,
                                                            self.camera_frame,
                                                            rospy.Time(0))
+                # TODO what does this rospy.Time(0) do?
                 # convert quaternion into 3x3 matrix
                 rot = tf.transformations.quaternion_matrix(rot)[:3, :3]
             except (tf.LookupException,
