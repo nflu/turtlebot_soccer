@@ -1,5 +1,29 @@
 # turtlebot_soccer
 
+## Turtlebot
+
+put an ar tag on top of turtlebot
+
+Remember to set 
+
+`export ROS_MASTER_URI=http://[TurtleID].local:11311`
+
+`ssh turtlebot@[TurtleId].local` password is `EE106A19`
+
+then run
+
+`roslaunch turtlebot_bringup minimal.launch --screen`
+
+and
+
+`roslaunch turtlebot_bringup 3dsensor.launch`
+
+then run 
+
+`rosrun tf static_transform_publisher 0.014 0 -0.397 0 0 0 ar_marker_5 base_link 100`
+
+or whichever ar tag is on the top of the turtlebot 
+
 ## Perception
 
 Grab a big tripod instead of the small one that comes with the realsense.
@@ -48,23 +72,3 @@ To check the speed of everything run
 `rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate `
 
 they should all be around 30 hz.
-
-## Turtlebot
-
-put an ar tag on top of turtlebot
-
-`ssh turtlebot@[TurtleId].local` password is `EE106A19`
-
-then run
-
-`roslaunch turtlebot_bringup minimal.launch --screen`
-
-and
-
-`roslaunch turtlebot_bringup 3dsensor.launch`
-
-then run 
-
-`rosrun tf static_transform_publisher 0.014 0 -0.397 0 0 ar_marker_5 base_link 0.1`
-
-or whichever ar tag is on the top of the turtlebot 
