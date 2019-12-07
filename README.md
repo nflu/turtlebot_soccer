@@ -2,7 +2,8 @@
 
 ## Turtlebot
 
-put an ar tag on top of turtlebot
+Put an AR tag on top of turtlebot and have the y direction of the AR point in the forward 
+direction of the turtlebot. 
 
 Remember to set 
 
