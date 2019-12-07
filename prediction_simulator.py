@@ -7,6 +7,8 @@ MAX_OMEGA = 2
 
 class Plan:
 	# Describes a spline
+	# x(t) = a1*t^3 + b1*t^2 + c1*t + d1
+	# y(t) = a2*t^3 + b2*t^2 + c2*t + d2
 
 	def __init__(self, a1, b1, c1, d1, a2, b2, c2, d2):
 		self.a1 = a1
@@ -79,8 +81,7 @@ class BallPredictor:
 	def record_observation(self, observation):
 		if len(self.history) > 10:
 			del self.history[0]
-		else:
-			self.history.append(observation)
+		self.history.append(observation)
 
 	def fit(self):
 		# Fits a line to the ball's trajectory
@@ -130,7 +131,7 @@ class Robot:
 	def __init__(self, state):
 		self.state = state
 
-	def move(self, speed, omega):
+	#def move(self, speed, omega):
 
 
 
