@@ -231,8 +231,8 @@ def main():
     verbosity = args.verbosity if args.ar_tag_number else 2
 
     # frames
-    world_frame = '/ar_marker_' + str(ar_tag_number)
-    camera_frame = '/camera_aligned_depth_to_color_frame'
+    world_frame = 'ar_marker_' + str(ar_tag_number)
+    camera_frame = 'realsense_aligned_depth_to_color_frame'
 
     # subscription topics
     rgb_topic = '/camera/color/image_raw'

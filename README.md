@@ -36,15 +36,7 @@ Make sure you have the realsense plugged into a USB 3 port through a USB 3 cable
 
 To run the perception module run the following command: 
 
-`roslaunch realsense2_camera rs_camera.launch align_depth:=true`
-
-and then in another terminal window run the following command:
-
-`roslaunch lab4_cam ar_track.launch`
-
-and then in a new terminal window run the following command:
-
-`rosrun perception main.py`
+`./src/perception/start.sh`
 
 You will need to have ar_maker_13 in the field of view of the camera. It uses 
 this ar tag as the world frame and publishes the state estimate of the ball in 
@@ -72,3 +64,7 @@ To check the speed of everything run
 `rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate `
 
 they should all be around 30 hz.
+
+## Move turtlebot to stationary ball
+
+`rosrun turtlebot_control turtlebot_control.py`

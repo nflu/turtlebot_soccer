@@ -9,9 +9,11 @@
 import rospy
 import tf2_ros
 import sys
-
+import numpy as np
 from collections import deque
 from geometry_msgs.msg import Twist, PointStamped
+import tf
+import ros_numpy
 
 
 # Define the method which contains the main functionality of the node.
@@ -40,7 +42,9 @@ class Controller:
         self.r = rospy.Rate(10)  # 10hz
 
         self.k1 = 0.3
-        self.k2 = 1
+        self.k2 = -1.0
+
+        self.turtlebot_frame = turtlebot_frame
 
     def callback(self, point):
         self.messages.appendleft(point)
@@ -51,12 +55,16 @@ class Controller:
             try:
                 goal_frame = self.most_recent_goal.header.frame_id
                 point = self.most_recent_goal.point
-                trans = self.tfBuffer.lookup_transform(turtlebot_frame, goal_frame, rospy.Time())
+                trans = self.tfBuffer.lookup_transform(self.turtlebot_frame, goal_frame, rospy.Time())
+                rot = ros_numpy.numpify(trans.transform.rotation)
+                rot =  np.array(tf.transformations.quaternion_matrix(rot)[:3, :3])
                 # Process trans to get your state error
                 # Generate a control command to send to the robot
                 msg = Twist()
-                msg.linear.x = self.k1 * (trans.transform.translation.x + point.x)
-                msg.angular.z = self.k2 * (trans.transform.translation.y + point.y)
+                point = np.dot(rot, ros_numpy.numpify(point)) + ros_numpy.numpify(trans.transform.translation)
+                print(point)
+                msg.linear.x = self.k1 *  point[1]
+                msg.angular.z = self.k2 *  point[0]
 
                 self.pub.publish(msg)
                 # Use our rate object to sleep until it is time to publish again
@@ -80,7 +88,7 @@ if __name__ == '__main__':
     sub_topic = '/state_estimate'
 
     try:
-        controller = Controller(turtlebot_frame, sub_topic)
+        controller = Controller(turtlebot_frame=turtlebot_frame, sub_topic=sub_topic)
         while True:
             controller.publish_once_from_queue()
     except rospy.ROSInterruptException:
