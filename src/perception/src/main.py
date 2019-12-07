@@ -24,7 +24,8 @@ import argparse
 
 # TODO this can actually change should probably get from a topic
 depth_scale = 1e-3  # measurements in mm convert to meter
-
+ball_radius = 0.09398  # in meters amazon says diameter is 7.4 inches
+ball_radius = ball_radius * 0.0
 
 def get_camera_matrix(camera_info_msg):
     """
@@ -135,7 +136,7 @@ class RealsensePerceptionProcess:
         except Exception as e:
             rospy.logerr(e)
             return
-
+        
         # add to queue of messages
         self.messages.appendleft((rgb_image, intrinsic_matrix, depth_image))
 
@@ -171,7 +172,7 @@ class RealsensePerceptionProcess:
                     self.debug_pub.publish(cam_pt)
                 if self.verbosity >= 1:
                     print("Published state estimate at timestamp:",
-                          world_pt.header.stamp.secs)
+                          world_pt.header.stamp.nsecs)
 
     def get_ball_location(self, image, cam_matrix, depth, trans, rot):
         """
@@ -187,8 +188,8 @@ class RealsensePerceptionProcess:
         :return: tuple of (world_point_stamped, camera_point_stamped) each of
         type geometry_msgs/PointStamped.msg
         """
-        camera_point = tracking(image, depth, depth_scale, cam_matrix,
-                                self.verbosity)
+        camera_point = tracking(rgb=image, depth=depth, depth_scale=depth_scale, cam_matrix=cam_matrix,
+                                ball_radius=ball_radius, verbosity=self.verbosity)
         if camera_point is None:
             return None, None
 

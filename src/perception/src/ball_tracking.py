@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from collections import deque
 import numpy as np
 import cv2
@@ -16,7 +17,7 @@ n = 20
 pts = deque(maxlen=n)
 
 
-def pixel_to_point(u, v, w, cam_matrix):
+def pixel_to_point(u, v, w, cam_matrix, ball_radius):
     """
     converts a pixel at location u,v with depth w to a point in the camera frame
     using the fundamental matrix cam_matrix
@@ -32,10 +33,12 @@ def pixel_to_point(u, v, w, cam_matrix):
 
     # for some reason the camera frame is a little different than the
     # fundamental matrix so we have to switch some axes
-    return np.array([z, -x, -y])
+    point = np.array([z, -x, -y])
+    point = point + ball_radius * point / np.linalg.norm(point)
+    return point
 
 
-def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
+def tracking(rgb, depth, depth_scale, cam_matrix, ball_radius, verbosity=0, use_hsv=False):
     """
     computes the position of the center of the ball in the camera frame
     :param rgb: rgb image numpy array
@@ -44,6 +47,7 @@ def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
     using pyrealsense2
     :param depth_scale: conversion factor from depth value to distance
     :param cam_matrix: fundamental matrix of depth camera
+    :param ball_radius: radius of ball
     :param verbosity: Determines how much to print, display and save. Higher
     verbosity is better for debugging but slower. If set to 0 will only
     print error messages. If set to 1 will also print pixel location of ball
@@ -99,8 +103,7 @@ def tracking(rgb, depth, depth_scale, cam_matrix, verbosity=0, use_hsv=False):
         if distance == 0.0:
             point = None
         else:
-            point = pixel_to_point(x, y, distance, cam_matrix)
-
+            point = pixel_to_point(x, y, distance, cam_matrix, ball_radius)
 
         if verbosity >= 1:
             print(int(x), int(y))

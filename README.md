@@ -18,12 +18,6 @@ and
 
 `roslaunch turtlebot_bringup 3dsensor.launch`
 
-then run 
-
-`rosrun tf static_transform_publisher 0.014 0 -0.397 0 0 0 ar_marker_5 base_link 100`
-
-or whichever ar tag is on the top of the turtlebot 
-
 ## Perception
 
 Grab a big tripod instead of the small one that comes with the realsense.
@@ -37,6 +31,12 @@ Make sure you have the realsense plugged into a USB 3 port through a USB 3 cable
 To run the perception module run the following command: 
 
 `./src/perception/start.sh`
+
+then run 
+
+`rosrun tf static_transform_publisher 0.014 0 -0.397 0 0 0 ar_marker_5 base_link 100`
+
+or whichever ar tag is on the top of the turtlebot 
 
 You will need to have ar_maker_13 in the field of view of the camera. It uses 
 this ar tag as the world frame and publishes the state estimate of the ball in 

@@ -1,0 +1,9 @@
+<launch>
+	<include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
+		<arg name="align_depth" value="true"/>
+		<arg name="tf_prefix" value="realsense"/>
+	<include file="$(find lab4_cam)/launch/ar_track.launch"/>
+		<arg name="output_frame" value="realsense_color_frame"/>
+	<!--<node pkg="perception" type="main.py" name="main" output="screen">
+	</node>-->
+</launch>
