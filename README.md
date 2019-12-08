@@ -62,9 +62,13 @@ To view the ball location in rviz run
 
 To check the speed of everything run 
 
-`rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate `
+`rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate /predicted_point`
 
 they should all be around 30 hz.
+
+## Prediction
+
+`rosrun prediction main.py`
 
 ## Move turtlebot to stationary ball
 

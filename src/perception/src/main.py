@@ -26,6 +26,7 @@ import argparse
 depth_scale = 1e-3  # measurements in mm convert to meter
 ball_radius = 0.09398  # in meters amazon says diameter is 7.4 inches
 ball_radius = ball_radius * 0.0
+SEC_TO_NSEC = 1e9
 
 def get_camera_matrix(camera_info_msg):
     """
@@ -48,7 +49,7 @@ class RealsensePerceptionProcess:
                  state_estimate_topic,
                  cam_state_est_topic=None,
                  verbosity=2,
-                 max_deque_size=5,
+                 max_deque_size=10,
                  queue_size=10,
                  slop=0.1):
         """
@@ -133,12 +134,15 @@ class RealsensePerceptionProcess:
             intrinsic_matrix = get_camera_matrix(info)
             rgb_image = ros_numpy.numpify(image)
             depth_image = ros_numpy.numpify(depth)
+            secs = image.header.stamp.secs
+            nsecs = image.header.stamp.nsecs
+            timestamp = np.float128(SEC_TO_NSEC * secs + nsecs)
         except Exception as e:
             rospy.logerr(e)
             return
         
         # add to queue of messages
-        self.messages.appendleft((rgb_image, intrinsic_matrix, depth_image))
+        self.messages.appendleft((rgb_image, intrinsic_matrix, depth_image, timestamp))
 
     def publish_once_from_queue(self):
         """
@@ -147,7 +151,7 @@ class RealsensePerceptionProcess:
         """
         if self.messages:
             # take a message off the queue
-            image, info, depth = self.messages.pop()
+            image, info, depth, image_timestamp = self.messages.pop()
 
             # get transform between camera frame and world frame
             try:
@@ -171,8 +175,13 @@ class RealsensePerceptionProcess:
                 if self.debug_pub is not None:
                     self.debug_pub.publish(cam_pt)
                 if self.verbosity >= 1:
+                    secs = world_pt.header.stamp.secs
+                    nsecs = world_pt.header.stamp.nsecs
+                    point_timestamp = np.float128(SEC_TO_NSEC * secs + nsecs)
                     print("Published state estimate at timestamp:",
-                          world_pt.header.stamp.nsecs)
+                          point_timestamp)
+                    print("Delay in seconds from image to estimate:",
+                            (point_timestamp - image_timestamp) / SEC_TO_NSEC)
 
     def get_ball_location(self, image, cam_matrix, depth, trans, rot):
         """

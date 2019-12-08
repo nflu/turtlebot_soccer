@@ -15,6 +15,21 @@ import rospy
 from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Path
 import numpy as np
+import time
+import threading
+
+import numpy as np
+
+SEC_TO_NSEC = 1e9
+
+def make_point_stamped(x, y, z, now, frame_id):
+    point = PointStamped()
+    point.point.x = x
+    point.point.y = y
+    point.point.z = z
+    point.header.stamp = now
+    point.header.frame_id = frame_id
+    return point
 
 
 class PredictionProcess:
@@ -25,10 +40,10 @@ class PredictionProcess:
                  predicted_point_topic,
                  averaged_state_est_topic,
                  verbosity=2,
-                 max_deque_size=5,
+                 max_deque_size=20,
                  queue_size=10,
-                 max_delta_t=1e8,
-                 avg_size=12):
+                 max_delta_t=SEC_TO_NSEC * 1.0/25.0,
+                 avg_size=5):
         """
         """
 
@@ -50,10 +65,11 @@ class PredictionProcess:
         # queue of messages will be formed from data from subscribers during
         # callback then published
         self.messages = deque([], max_deque_size)
+        self.messages_lock = threading.Lock()
         self.points = []
         self.times = []
         self.avg_size = avg_size
-        self.max_delta_t = max_delta_t
+        self.max_delta_t = max_delta_t * avg_size
 
         # set up subscribers
         state_est_sub = rospy.Subscriber(state_est_topic, PointStamped, self.callback)
@@ -62,70 +78,79 @@ class PredictionProcess:
         """
         """
         # add to queue of messages
+        self.messages_lock.acquire()
         self.messages.appendleft(state_estimate)
+        self.messages_lock.release()
 
     def publish_once_from_queue(self):
         """
         publishes a prediction from a message in queue
         :return: None
         """
+        self.messages_lock.acquire()
         if self.messages:
-            # take a message off the queue
             state_estimate = self.messages.pop()
+        else:
+            state_estimate = None
+        self.messages_lock.release()
+
+        if state_estimate:
             x = state_estimate.point.x
             y = state_estimate.point.y
             z = state_estimate.point.z
-            if len(self.points) == self.avg_size:
-                bin_1_point = np.mean(self.points[:self.avg_size//2], axis=0)
-                bin_2_point = np.mean(self.points[self.avg_size//2:], axis=0)
-                bin_1_time = np.mean(self.times[:self.avg_size//2])
-                bin_2_time = np.mean(self.times[self.avg_size//2:])
+            if len(self.points) == 2 * self.avg_size:
+                bin_1_point = np.mean(self.points[:self.avg_size], axis=0)
+                bin_2_point = np.mean(self.points[self.avg_size:], axis=0)
+                bin_1_time = np.mean(self.times[:self.avg_size])
+                bin_2_time = np.mean(self.times[self.avg_size:])
 
                 delta_t = bin_2_time - bin_1_time
                 if delta_t <= self.max_delta_t:
-                    x_dot,y_dot = (bin_2_point-bin_1_point)/delta_t
-
-                    #times = np.arange(0, 1.0, delta_t)
-                    #path_y_positions = y_dot*times+y
-                    #path_x_positions = x_dot*times+x
+                    x_dot,y_dot = (bin_2_point - bin_1_point) / delta_t
                     now = rospy.Time.now()
+                    frame_id = state_estimate.header.frame_id
+                    averaged_point1 = make_point_stamped(x=bin_1_point[0], y=bin_1_point[1], z=z, 
+                                                         now=now, frame_id=frame_id)
+                    averaged_point2 = make_point_stamped(x=bin_2_point[0], y=bin_2_point[1], z=z, 
+                                                         now=now, frame_id=frame_id)
 
-                    averaged_point2 = PointStamped()
-                    averaged_point2.point.x = bin_2_point[0]
-                    averaged_point2.point.y = bin_2_point[1]
-                    averaged_point2.point.z = z
-                    averaged_point2.header.stamp = now
-                    averaged_point2.header.frame_id = state_estimate.header.frame_id
-
-                    averaged_point = PointStamped()
-                    averaged_point.point.x = bin_1_point[0]
-                    averaged_point.point.y = bin_1_point[1]
-                    averaged_point.point.z = z
-                    averaged_point.header.stamp = now
-                    averaged_point.header.frame_id = state_estimate.header.frame_id
-
-
-                    predicted_point = PointStamped()
-                    predicted_point.point.x = x_dot*1e9+averaged_point.point.x
-                    predicted_point.point.y = y_dot*1e9+averaged_point.point.y
-                    predicted_point.point.z = z
-                    predicted_point.header.stamp = now
-                    predicted_point.header.frame_id = state_estimate.header.frame_id
+                    predicted_point = make_point_stamped(x=x_dot*SEC_TO_NSEC+averaged_point2.point.x, 
+                                                         y=y_dot*SEC_TO_NSEC+averaged_point2.point.y, z=z, 
+                                                         now=now, frame_id=frame_id)
 
                     self.average_point_pub_2.publish(averaged_point2)
                     self.predicted_point_pub.publish(predicted_point)
-                    self.average_point_pub.publish(averaged_point)
-                    # self.prediction_pub.publish(path)
+                    self.average_point_pub.publish(averaged_point1)
+                    
                     if self.verbosity >= 1:
+                        secs = predicted_point.header.stamp.secs
+                        nsecs = predicted_point.header.stamp.nsecs
+                        prediction_timestamp = np.float128(secs * SEC_TO_NSEC + nsecs)
+
                         print("Published prediction at timestamp:",
-                              predicted_point.header.stamp.nsecs)
+                              prediction_timestamp)
+                        print("Delay from first state estimate to prediction in seconds:",
+                            (prediction_timestamp - self.times[0]) / SEC_TO_NSEC)
+                        print("Delay from last state estimate to prediction in seconds:",
+                            (prediction_timestamp - self.times[-1]) / SEC_TO_NSEC)
+                        print('delta t in seconds:', delta_t / SEC_TO_NSEC)
+                elif self.verbosity >=1:
+                    print('throw away prediction with delta t:', delta_t / SEC_TO_NSEC, 
+                        'max_delta_t is:', self.max_delta_t / SEC_TO_NSEC)
                 self.points.pop(0)
                 self.points.append(np.array([x,y]))
                 self.times.pop(0)
-                self.times.append(state_estimate.header.stamp.nsecs)
+                secs = state_estimate.header.stamp.secs
+                nsecs = state_estimate.header.stamp.nsecs
+                self.times.append(np.float128(SEC_TO_NSEC * secs + nsecs))
+
             else:
+                if self.verbosity >= 1:
+                    print('not enough points yet')
                 self.points.append(np.array([x,y]))
-                self.times.append(state_estimate.header.stamp.nsecs)
+                secs = state_estimate.header.stamp.secs
+                nsecs = state_estimate.header.stamp.nsecs
+                self.times.append(np.float128(SEC_TO_NSEC * secs + nsecs))
 
 
 
