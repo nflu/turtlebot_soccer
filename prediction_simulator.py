@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
-MAX_SPEED = 3
-MAX_OMEGA = 2
+# Actual speeds (roughly) of the Turtlebot in m/s and rad/s
+MAX_SPEED = 0.6
+MAX_OMEGA = 1.9
 
 
 class Plan:
@@ -46,6 +48,7 @@ class Plan:
 		return np.arctan2(self.y_dot(t), self.x_dot(t))
 
 	def omega(self, t):
+		#return (self.theta(t + 0.01) - self.theta(t - 0.01))/0.02
 		return (1/(1 + (self.y_dot(t)/self.x_dot(t)) ** 2)) * \
 		(self.x_dot(t) * self.y_dbl_dot(t) - self.y_dot(t) * self.x_dbl_dot(t))/(self.x_dot(t) ** 2)
 
@@ -67,6 +70,11 @@ class Plan:
 		else:
 			return max_omega/MAX_OMEGA
 
+	def plot(self):
+		xs = [self.x(t) for t in np.linspace(0, 1, 50)]
+		ys = [self.y(t) for t in np.linspace(0, 1, 50)]
+		plt.plot(xs, ys, 'r--')
+		plt.show()
 
 
 class BallPredictor:
@@ -89,7 +97,7 @@ class BallPredictor:
 		# 		y(t) = m2 * t + b2
 
 		if len(self.history) < 2:
-			return None
+			return False
 
 		point1 = self.history[-2]
 		point2 = self.history[-1]
@@ -107,6 +115,8 @@ class BallPredictor:
 		self.m2 = m2
 		self.b2 = b2
 
+		return True
+
 	def future_location(self, t):
 		at_t_x = self.m1 * t + self.b1
 		at_t_y = self.m2 * t + self.b2
@@ -118,34 +128,38 @@ class Robot:
 	'''
 	Dynamics:
 
-	x_dot = vcos(theta)
-	y_dot = vsin(theta)
+	x_dot = v * cos(theta)
+	y_dot = v * sin(theta)
 	theta_dot = omega
-	v_dot = acceleration
 
 	u_1 = omega
-	u_2 = acceleration
+	u_2 = v
 	
 	'''
 
-	def __init__(self, state):
-		self.state = state
+	def __init__(self, x, y, theta, dt):
+		self.x = x
+		self.y = y
+		self.theta = theta
+		self.dt = dt
 
-	#def move(self, speed, omega):
+	def move(self, speed, omega):
+		self.x = self.x + (self.dt * speed * np.cos(self.theta))
+		self.y = self.y + (self.dt * speed * np.sin(self.theta))
+		self.theta = self.theta + (self.dt * omega)
 
 
 
 class PredictionSimulator:
 
-	def __init__(self, robot_init_state):
+	def __init__(self, robot_init_state, dt):
 		self.ball_predictor = BallPredictor()
-		self.robot_state = robot_init_state
-
+		self.dt = dt
+		self.robot = Robot(robot_init_state[0], robot_init_state[1], robot_init_state[2], self.dt)
 
 	# def line(self, x, m1, m2, b1, b2):
 	# 	m1 = 
 	# 	return (m2/m1) * (x - b1) + b2
-
 
 	def planner(self, initial_state, final_state, initial_speed, final_speed):
 		"""
@@ -179,73 +193,128 @@ class PredictionSimulator:
 		b1 = xf - (2*(x0 - xf) + (vx0 + vxf)) - vx0 - x0
 		b2 = yf - (2*(y0 - yf) + (vy0 + vyf)) - vy0 - y0
 
-
 		return Plan(a1, b1, c1, d1, a2, b2, c2, d2)
 
-
-
-	def plan_to_intercept(self, robot_init_state):
+	def plan_to_intercept(self, global_time):
 		# Finds a plan to intercept the ball
 
 		for t in range(50):
 			# Where is the ball? That's the goal for the planner
-			at_t_x, at_t_y = self.ball_predictor.future_location(t)
-			final_state = [at_t_x, at_t_y, robot_init_state[2]]
+			at_t_x, at_t_y = self.ball_predictor.future_location(global_time + t)
+			final_state = [at_t_x, at_t_y, self.robot.theta]
 			initial_speed = 1.5
 			final_speed = 1.5
 
-			plan = planner(robot_init_state, final_state, initial_speed, final_speed)
+			robot_state = [self.robot.x, self.robot.y, self.robot.theta]
+			plan = self.planner(robot_state, final_state, initial_speed, final_speed)
+			# xs = [plan.x(t) for t in np.linspace(0, 1, 50)]
+			# ys = [plan.y(t) for t in np.linspace(0, 1, 50)]
+			# thetas = [plan.theta(t) for t in np.linspace(0, 1, 50)]
+			# omegas = [plan.omega(t) for t in np.linspace(0, 1, 50)]
+			# plt.plot(xs, ys, 'r--')
+			# plt.pause(0.5)
 			time_achieved = plan.planning_time()
 
 			# Can the robot get there in time?
 			if time_achieved <= t:
+				# print("xs: ", xs)
+				# print("ys: ", ys)
+				# print("thetas: ", thetas)
+				# print("omegas: ", omegas)
+				# plt.scatter([0, 1], [1, 2])
+				# plt.show()
 				return plan
 
+		print("Could not find a plan!")
+		return None
+
+	def sensor(self, start, period):
+		time = 0
+		while True:
+			yield [start[0] + 0.3 * time, start[1] + 0.3 * time, time]
+			time += period
+
+	def simulate(self):
+		global_time = 0
+		ball_start = [0, 1]
+		plt.plot(ball_start[0], ball_start[1], 'mo')
+		plt.plot(self.robot.x, self.robot.y, 'ko')
+		plt.pause(2)
+		sensor_period = 1
+		for ball_observation in self.sensor(ball_start, sensor_period):
+			if global_time > 15:
+				break
+			self.ball_predictor.record_observation(ball_observation)
+			if self.ball_predictor.fit():
+				time_since_planning = 0
+				plan = self.plan_to_intercept(global_time)
+				xs = [plan.x(t) for t in np.linspace(0, 1, 50)]
+				ys = [plan.y(t) for t in np.linspace(0, 1, 50)]
+				plt.plot(xs, ys, 'r--')
+				plt.pause(2)
+				time_achieved = plan.planning_time()
+				for i in range(int(sensor_period/self.dt)):
+					timestamp = time_since_planning + self.dt*i
+					converted_time = timestamp/time_achieved 	# Plan is normalized to happen in only 1 sec
+					control_speed = plan.speed(converted_time)
+					control_omega = plan.omega(converted_time)
+					self.robot.move(control_speed, control_omega)
+					plt.plot(ball_observation[0], ball_observation[1], 'mo')
+					plt.plot(self.robot.x, self.robot.y, 'ko')
+					plt.pause(2)
+			
+			global_time += sensor_period
+		
+		plt.show()
 
 
-	def simulate(self, ball_observation):
-		self.ball_predictor.record_observation(ball_observation)
-		if self.ball_predictor.fit() == None:
-			print("Not enough observations of the ball!")
-			return
-		else:
-			plan = self.plan_to_intercept(self.robot_state)
 
-
-
-
+	# def simulate(self, ball_observation):
+	# 	self.ball_predictor.record_observation(ball_observation)
+	# 	if not self.ball_predictor.fit():
+	# 		print("Not enough observations of the ball!")
+	# 		return
+	# 	else:
+	# 		plan = self.plan_to_intercept()
+	# 		if plan is not None:
+	# 			#time_achieved = plan.planning_time()
+	# 			#timestamp = self.dt/time_achieved
+	# 			control_speed = plan.speed(0)
+	# 			control_omega = plan.omega(0)
+	# 			self.robot.move(control_speed, control_omega)
+	# 			return plan
+	# 		else:
+	# 			return None
+	
+	# def simulate_loop(self, ball_observations):
+	# 	plt.figure()
+	# 	for ball_observation in ball_observations:
+	# 		plan = self.simulate(ball_observation)
+	# 		if plan is not None:
+	# 			xs = [plan.x(t) for t in np.linspace(0, 1, 50)]
+	# 			ys = [plan.y(t) for t in np.linspace(0, 1, 50)]
+	# 			plt.plot(xs, ys, 'r--')
+	# 			plt.scatter([ball_observation[0], self.robot.x], [ball_observation[1], self.robot.y])
+	# 			plt.pause(3)
+	# 	plt.show()
 
 
 if __name__ == "__main__":
-	# two_points = [[0, 0, 1], [4, 6, 6]]
-	# ([m1, b1], [m2, b2]) = fit(two_points)
-	# x = np.linspace(-5, 10, 150)
-	# plt.figure()
-	# plt.plot(x, line(x, m1, m2, b1, b2))
-
-	# t = 7
-	# at_t_x = m1 * t + b1
-	# at_t_y = m2 * t + b2
-
-	# plt.scatter([0, 4, at_t_x], [0, 6, at_t_y])
-	# plt.show()
-
-	# # Initial and final states
-	# initial_state = np.array([0., 0., 0.])
-	# final_state = np.array([2., 2., 0.5*np.pi])
-	# initial_speed = 10
-	# final_speed = 1
-	# visualize = True
-
-	# xs, ys, speed, thetas, omegas = plan(initial_state, final_state, initial_speed, final_speed, visualize)
-
-	# plt.show()
-
-	ball_two_points = [[0, 0, 1], [1, 2, 2]]
-	robot_init_state = np.array([7., 15., -np.pi/2])
-
-	simulator(ball_two_points, robot_init_state)
-
+	pred_sim = PredictionSimulator([4, 2, np.pi/2], 0.2)
+	pred_sim.simulate()
+	
+	#ball_observations = [[0, 1, 1], [0.3, 1.3, 2], [0.6, 1.6, 3], [0.9, 1.9, 4], [1.2, 2.2, 5], [1.5, 2.5, 6], [1.8, 2.8, 7], [2.1, 3.1, 8], [2.4, 3.4, 9], [2.7, 3.7, 10], [3.0, 4.0, 11], [3.3, 4.3, 12], [3.6, 4.6, 13], [3.9, 4.9, 14], [4.2, 5.2, 15]]
+	#pred_sim.simulate_loop(ball_observations)
+	
+	# pred_sim.ball_predictor.record_observation([0, 1, 1]) 
+	# pred_sim.ball_predictor.record_observation([0.3, 1.3, 2])
+	# pred_sim.ball_predictor.fit()
+	# plan = pred_sim.plan_to_intercept()
+	# print("Planning time: ", plan.planning_time())
+	# print("End of plan: ", plan.x(1), plan.y(1))
+	# print("Where will ball be at planning time: ", pred_sim.ball_predictor.future_location(plan.planning_time()))
+	#plt.scatter([0, 1], [1, 2])
+	#plt.show()
 
 
 
