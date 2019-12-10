@@ -153,7 +153,7 @@ class RealsensePerceptionProcess:
             # take a message off the queue
             image, info, depth, image_timestamp = self.messages.pop()
 
-            # get transform between camera frame and world frame
+            # get transform from camera frame to world frame
             try:
                 trans, rot = self.listener.lookupTransform(self.world_frame,
                                                            self.camera_frame,

@@ -17,8 +17,7 @@ from nav_msgs.msg import Path
 import numpy as np
 import time
 import threading
-
-import numpy as np
+from prediction.msg import point_vel
 
 SEC_TO_NSEC = 1e9
 
@@ -42,14 +41,14 @@ class PredictionProcess:
                  verbosity=2,
                  max_deque_size=20,
                  queue_size=10,
-                 max_delta_t=SEC_TO_NSEC * 1.0/25.0,
+                 max_delta_t=SEC_TO_NSEC * 1.0/20.0,
                  avg_size=5):
         """
         """
 
         # set up publishing topics
         self.prediction_pub = rospy.Publisher(prediction_topic,
-                                                  Path,
+                                                  point_vel,
                                                   queue_size=queue_size)
         self.predicted_point_pub = rospy.Publisher(predicted_point_topic,
                                                   PointStamped,
@@ -118,9 +117,18 @@ class PredictionProcess:
                                                          y=y_dot*SEC_TO_NSEC+averaged_point2.point.y, z=z, 
                                                          now=now, frame_id=frame_id)
 
+                    point_v = point_vel()
+                    # TODO maybe change to averaged_point_2
+                    point_v.point = state_estimate.point
+                    point_v.linear.x = x_dot * SEC_TO_NSEC
+                    point_v.linear.y = y_dot * SEC_TO_NSEC
+                    point_v.linear.z = 0
+                    point_v.header = predicted_point.header
+
                     self.average_point_pub_2.publish(averaged_point2)
                     self.predicted_point_pub.publish(predicted_point)
                     self.average_point_pub.publish(averaged_point1)
+                    self.prediction_pub.publish(point_v)
                     
                     if self.verbosity >= 1:
                         secs = predicted_point.header.stamp.secs
