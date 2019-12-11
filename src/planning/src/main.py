@@ -41,7 +41,9 @@ class PlanningProcess:
                  turtlebot_frame,
                  verbosity=2,
                  max_deque_size=20,
-                 queue_size=10):
+                 queue_size=10,
+                 points_to_check=50,
+                 time_horizon=2):
         """
         """
 
@@ -67,6 +69,9 @@ class PlanningProcess:
         self.listener = tf.TransformListener()
         self.turtlebot_frame = turtlebot_frame
 
+        self.points_to_check = points_to_check
+        self.time_horizon = time_horizon
+
                 # set up subscribers
         self.prediction_topic_sub = rospy.Subscriber(prediction_topic,
                                                 point_vel,
@@ -91,8 +96,12 @@ class PlanningProcess:
             y_b = point_v.point.y
             z = point_v.point.z
 
+            ball_point = np.array([x_b, y_b])
+
             x_dot = point_v.linear.x
             y_dot = point_v.linear.y
+
+            ball_velocity = np.array([x_dot, y_dot])
 
             point = PointStamped()
             point.point = point_v.point
@@ -117,54 +126,30 @@ class PlanningProcess:
            # self.intersection_pub_1.publish(point)
             
             turtle_point = np.dot(rot, POINT_ON_TURTLEBOT) + trans
-            x_t, y_t, _ = turtle_point
+            turtle_point = turtle_point[:2]
 
-            speed = np.linalg.norm([x_dot, y_dot])
-            distance = np.linalg.norm([x_b-x_t,y_b-y_t])
 
-            h_1 = x_dot**2 + y_dot**2 - NOMINAL_MAX_SPEED**2
-            h_2 = (x_b - x_t) * x_dot + (y_b - y_t) * y_dot
-            h_3 = (x_b - x_t)**2 + (y_b - y_t)**2
+            speed = np.linalg.norm(ball_velocity)
+            distance = np.linalg.norm(ball_point - turtle_point)
 
-            # TODO maybe check if sufficiently close
-            if h_1 == 0:
-                t = -h_3/(2*h_2)
-                if t >= 0:
-                    point_1 = make_point_stamped(x_b + x_dot*t_1, y_b+y_dot*t, z, now, world_frame)
-                    self.intersection_pub_1.publish(point_1)
-                    if speed > 0.06:
-                        print('speed', speed)
-                        print('distance', distance)
-                   # print("intersection t", t)
-                else:
-                    print('no solution')
-            else:
-                in_sqrt = (h_2/h_1)**2 - (h_3/h_1)
-                if in_sqrt < 0:
-                    print('no solution')
-                else:
-                    t_1 = -h_2/h_1 + in_sqrt**0.5
-                    t_2 = -h_2/h_1 - in_sqrt**0.5
-                  #  print("intersection t1", t_1, "intersection t2", t_2)
-                    now = rospy.Time.now()
-                    if t_1 >= 0:
-                        point_1 = make_point_stamped(x_b + x_dot*t_1, y_b+y_dot*t_1, z, now, world_frame)
-                        self.intersection_pub_1.publish(point_1)
-                        if speed > 0.06:
-                            print('speed', speed)
-                            print('distance', distance)
-                    if t_2 >= 0:
-                        point_2 = make_point_stamped(x_b + x_dot*t_2, y_b+y_dot*t_2, z, now, world_frame)
-                        if t_1 < 0:
-                            self.intersection_pub_1.publish(point_2)
-                            if speed > 0.06:
-                                print('speed', speed)
-                                print('distance', distance)
-                        else:
-                            self.intersection_pub_2.publish(point_2)
-                    if t_1 < 0 and t_2 < 0:
-                        print('no solution')
-            
+            ts = np.linspace(0, self.time_horizon, self.points_to_check)
+
+            best_dist = float('inf')
+            best_point = None
+            for t in ts:
+                ball_next_point = ball_point + ball_velocity * t
+                v = ball_next_point - turtle_point
+                v = v / np.linalg.norm(v) 
+                turtle_next_point = turtle_point + v * NOMINAL_MAX_SPEED * t
+                if np.linalg.norm(turtle_next_point - ball_next_point) < best_dist:
+                    best_point = ball_next_point
+
+            point = make_point_stamped(best_point[0], best_point[1], z, rospy.Time.now(), world_frame)
+            self.intersection_pub_1.publish(point)
+            #ball_path = ball_point + ball_velocity * ts
+            #turtle_path = turtle_point + NOMINAL_MAX_SPEED * ts
+
+
 
 
 def main():

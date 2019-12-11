@@ -46,7 +46,7 @@ class Controller:
         self.arctan_inner_gain = 8.0
         self.arctan_outer_gain = 0.55
 
-        self.k_p = np.array([0.3, -1.0])
+        self.k_p = np.array([0.6, -1.5])
 
         self.k_i = np.array([0, 0])
 
@@ -64,7 +64,6 @@ class Controller:
 
 
     def callback(self, point):
-        print('in callback')
         self.messages.appendleft(point)
 
     def publish_once_from_queue(self):
@@ -140,11 +139,14 @@ if __name__ == '__main__':
     turtlebot_frame = 'base_link'
     sub_topic = args.goal_topic if args.goal_topic else '/predicted_point'
     use_arctan = args.use_arctan if args.use_arctan else False
-
-    try:
-        controller = Controller(turtlebot_frame=turtlebot_frame, sub_topic=sub_topic,
+    
+    controller = Controller(turtlebot_frame=turtlebot_frame, sub_topic=sub_topic,
                                 use_arctan=use_arctan)
-        while True:
-            controller.publish_once_from_queue()
-    except rospy.ROSInterruptException:
-        pass
+    while True:
+        raw_input('press enter to run again')
+        try:
+            while True:
+                controller.publish_once_from_queue()
+        except KeyboardInterrupt:
+            pass
+
