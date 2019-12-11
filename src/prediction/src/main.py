@@ -169,9 +169,9 @@ def main():
     state_est_topic = '/state_estimate'
 
     # publishing topics
-    prediction_topic = '/predicted_path'
+    prediction_topic = '/predicted_path'   # Gives velocity
     predicted_point_topic = '/predicted_point'
-    averaged_state_est_topic = '/avg_state_est'
+    averaged_state_est_topic = '/avg_state_est'  # Gives most recent 5 sensor measurements averaged up
     # setup ros subs, pubs and connect to realsense
     rospy.init_node('prediction')
     process = PredictionProcess(state_est_topic=state_est_topic,
