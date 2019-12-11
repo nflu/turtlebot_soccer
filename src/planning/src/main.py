@@ -21,7 +21,7 @@ import argparse
 import matplotlib.pyplot as plt
 
 POINT_ON_TURTLEBOT = np.zeros(3)
-NOMINAL_MAX_SPEED = 0.5
+NOMINAL_MAX_SPEED = 0.3
 
 def make_point_stamped(x, y, z, now, frame_id):
     point = PointStamped()
@@ -42,8 +42,8 @@ class PlanningProcess:
                  verbosity=2,
                  max_deque_size=20,
                  queue_size=10,
-                 points_to_check=50,
-                 time_horizon=2):
+                 points_to_check=100,
+                 time_horizon=1.0):
         """
         """
 
@@ -136,6 +136,7 @@ class PlanningProcess:
 
             best_dist = float('inf')
             best_point = None
+            best_turtle_point = None
             for t in ts:
                 ball_next_point = ball_point + ball_velocity * t
                 v = ball_next_point - turtle_point
@@ -143,9 +144,12 @@ class PlanningProcess:
                 turtle_next_point = turtle_point + v * NOMINAL_MAX_SPEED * t
                 if np.linalg.norm(turtle_next_point - ball_next_point) < best_dist:
                     best_point = ball_next_point
+                    best_turtle_point = turtle_next_point
 
             point = make_point_stamped(best_point[0], best_point[1], z, rospy.Time.now(), world_frame)
+            point2 = make_point_stamped(best_turtle_point[0], best_turtle_point[1], z, rospy.Time.now(), world_frame)
             self.intersection_pub_1.publish(point)
+            self.intersection_pub_2.publish(point)
             #ball_path = ball_point + ball_velocity * ts
             #turtle_path = turtle_point + NOMINAL_MAX_SPEED * ts
 

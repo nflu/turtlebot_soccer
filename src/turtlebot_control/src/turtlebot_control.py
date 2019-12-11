@@ -15,7 +15,7 @@ from geometry_msgs.msg import Twist, PointStamped
 import tf
 import ros_numpy
 import argparse
-
+from matplotlib import pyplot as plt
 
 # Define the method which contains the main functionality of the node.
 class Controller:
@@ -30,7 +30,7 @@ class Controller:
     """
 
         # Create a publisher and a tf buffer, which is primed with a tf listener
-        self.pub = rospy.Publisher('/yellow/mobile_base/commands/velocity', Twist, queue_size=queue_size)
+        self.pub = rospy.Publisher('/red/mobile_base/commands/velocity', Twist, queue_size=queue_size)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
 
@@ -46,7 +46,7 @@ class Controller:
         self.arctan_inner_gain = 8.0
         self.arctan_outer_gain = 0.55
 
-        self.k_p = np.array([0.6, -1.5])
+        self.k_p = np.array([0.4, -0.55])
 
         self.k_i = np.array([0, 0])
 
@@ -59,9 +59,11 @@ class Controller:
         self.anti_windup = 1.0
 
         self.turtlebot_frame = turtlebot_frame
-        print('sub topic:', sub_topic)
+
         self.sub = rospy.Subscriber(sub_topic, PointStamped, self.callback)
 
+        self.last_msg = None
+        self.controls = []
 
     def callback(self, point):
         self.messages.appendleft(point)
@@ -70,6 +72,8 @@ class Controller:
         self.most_recent_goal = self.messages.pop() if len(self.messages) else self.most_recent_goal
         if self.most_recent_goal is not None:
             try:
+
+
                 goal_frame = self.most_recent_goal.header.frame_id
                 time = np.float128(self.most_recent_goal.header.stamp.secs +
                                    1e-9 * self.most_recent_goal.header.stamp.nsecs)
@@ -86,13 +90,17 @@ class Controller:
           
                 msg.linear.x, msg.angular.z = self.control_law(np.array([point[1], point[0]]),
                                                                    time)
-
+                print(msg.linear.x, msg.angular.z)
+                self.last_msg = msg
                 self.pub.publish(msg)
                 # Use our rate object to sleep until it is time to publish again
                 self.r.sleep()
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
                     tf2_ros.ExtrapolationException) as e:
-                print(e)
+                msg = Twist()
+                msg.linear.x = 0.0
+                msg.angular.z = 0.0
+                self.pub.publish(msg)
 
     def control_law(self, error, time):
 
@@ -103,7 +111,10 @@ class Controller:
 
         if self.last_error is not None:
             delta_t = time - self.last_time
-            d = self.k_d * (error - self.last_error) / delta_t
+            if delta_t != 0:
+                d = self.k_d * (error - self.last_error) / delta_t
+            else:
+                d = 0.0
         else:
             d = np.zeros(2)
 
@@ -144,9 +155,12 @@ if __name__ == '__main__':
                                 use_arctan=use_arctan)
     while True:
         raw_input('press enter to run again')
-        try:
-            while True:
-                controller.publish_once_from_queue()
-        except KeyboardInterrupt:
-            pass
+        print('\n running!')
+        while True:
+            controller.publish_once_from_queue()
+            # print('paused')
+            # plt.plot(controller.controls[:,0])
+            # plt.plot(controller.controls[:,1])
+            # plt.show()
+            # pass
 

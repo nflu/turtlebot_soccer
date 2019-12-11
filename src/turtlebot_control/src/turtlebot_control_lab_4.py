@@ -29,7 +29,7 @@ class Controller:
     """
 
         # Create a publisher and a tf buffer, which is primed with a tf listener
-        self.pub = rospy.Publisher('/yellow/mobile_base/commands/velocity', Twist, queue_size=queue_size)
+        self.pub = rospy.Publisher('/red/mobile_base/commands/velocity', Twist, queue_size=queue_size)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
 
