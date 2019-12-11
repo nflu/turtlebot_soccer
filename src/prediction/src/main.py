@@ -119,11 +119,14 @@ class PredictionProcess:
 
                     point_v = point_vel()
                     # TODO maybe change to averaged_point_2
-                    point_v.point = state_estimate.point
+                    point_v.point.x = x
+                    point_v.point.y = y
+                    point_v.point.z = z
                     point_v.linear.x = x_dot * SEC_TO_NSEC
                     point_v.linear.y = y_dot * SEC_TO_NSEC
                     point_v.linear.z = 0
                     point_v.header = predicted_point.header
+                    point_v.header.stamp = rospy.Time.now()
 
                     self.average_point_pub_2.publish(averaged_point2)
                     self.predicted_point_pub.publish(predicted_point)

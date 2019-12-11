@@ -237,8 +237,8 @@ def main():
 
     # parse arguments
     args = parser.parse_args()
-    ar_tag_number = args.ar_tag_number if args.ar_tag_number else '13'
-    verbosity = args.verbosity if args.ar_tag_number else 2
+    ar_tag_number = args.ar_tag_number if args.ar_tag_number is not None else '13'
+    verbosity = args.verbosity if args.verbosity is not None else 2
 
     # frames
     world_frame = 'ar_marker_' + str(ar_tag_number)

@@ -30,11 +30,10 @@ class Controller:
     """
 
         # Create a publisher and a tf buffer, which is primed with a tf listener
-        self.pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=queue_size)
+        self.pub = rospy.Publisher('/yellow/mobile_base/commands/velocity', Twist, queue_size=queue_size)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        self.sub = rospy.Subscriber(sub_topic, PointStamped, self.callback)
         self.most_recent_goal = None
         self.messages = deque([], max_deque_size)
 
@@ -60,8 +59,12 @@ class Controller:
         self.anti_windup = 1.0
 
         self.turtlebot_frame = turtlebot_frame
+        print('sub topic:', sub_topic)
+        self.sub = rospy.Subscriber(sub_topic, PointStamped, self.callback)
+
 
     def callback(self, point):
+        print('in callback')
         self.messages.appendleft(point)
 
     def publish_once_from_queue(self):
@@ -81,9 +84,8 @@ class Controller:
                 msg = Twist()
                 point = np.dot(rot, ros_numpy.numpify(point)) + ros_numpy.numpify(trans.transform.translation)
 
-                if self.use_arctan:
-
-                    msg.linear.x, msg.angular.z = self.control_law(np.array([point[1], point[0]]),
+          
+                msg.linear.x, msg.angular.z = self.control_law(np.array([point[1], point[0]]),
                                                                    time)
 
                 self.pub.publish(msg)
@@ -100,7 +102,7 @@ class Controller:
         p = self.k_p * error
         i = self.k_i * self.integral_error
 
-        if self.last_error:
+        if self.last_error is not None:
             delta_t = time - self.last_time
             d = self.k_d * (error - self.last_error) / delta_t
         else:
@@ -136,7 +138,7 @@ if __name__ == '__main__':
     rospy.init_node('turtlebot_controller', anonymous=True)
 
     turtlebot_frame = 'base_link'
-    sub_topic = args.goal_topic if args.goal_topic else '/intersection_point'
+    sub_topic = args.goal_topic if args.goal_topic else '/predicted_point'
     use_arctan = args.use_arctan if args.use_arctan else False
 
     try:

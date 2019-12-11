@@ -36,10 +36,9 @@ def make_point_stamped(x, y, z, now, frame_id):
 class PlanningProcess:
 
     def __init__(self,
-                 state_est_topic,
                  prediction_topic,
                  intersection_topic,
-                 average_state_est,
+                 turtlebot_frame,
                  verbosity=2,
                  max_deque_size=20,
                  queue_size=10):
@@ -55,11 +54,12 @@ class PlanningProcess:
         self.messages = deque([], max_deque_size)
         self.messages_lock = threading.Lock()
 
-        # set up subscribers
-        self.intersection_sub = rospy.Subscriber(intersection_topic,
+
+        self.intersection_pub_1 = rospy.Publisher(intersection_topic,
                                                 PointStamped,
-                                                self.callback)
-        self.prediction_topic_sub = rospy.Publisher(prediction_topic,
+                                                queue_size=queue_size)
+
+        self.intersection_pub_2 = rospy.Publisher(intersection_topic + '2',
                                                 PointStamped,
                                                 queue_size=queue_size)
 
@@ -67,28 +67,26 @@ class PlanningProcess:
         self.listener = tf.TransformListener()
         self.turtlebot_frame = turtlebot_frame
 
+                # set up subscribers
+        self.prediction_topic_sub = rospy.Subscriber(prediction_topic,
+                                                point_vel,
+                                                self.callback)
+
 
     def callback(self, point_v):
         """
         """
         # add to queue of messages
-        self.messages_lock.acquire()
         self.messages.appendleft(point_v)
-        self.messages_lock.release()
 
     def publish_once_from_queue(self):
         """
         publishes a prediction from a message in queue
         :return: None
         """
-        self.messages_lock.acquire()
         if self.messages:
             point_v = self.messages.pop()
-        else:
-            point_v = None
-        self.messages_lock.release()
 
-        if point_v:
             x_b = point_v.point.x
             y_b = point_v.point.y
             z = point_v.point.z
@@ -96,6 +94,11 @@ class PlanningProcess:
             x_dot = point_v.linear.x
             y_dot = point_v.linear.y
 
+            point = PointStamped()
+            point.point = point_v.point
+            point.header = point_v.header
+            
+            
             world_frame = point_v.header.frame_id
 
             try:
@@ -109,16 +112,16 @@ class PlanningProcess:
                     tf.ExtrapolationException) as e:
                 print(e)
                 return
+
+            point.header.stamp = rospy.Time.now()
+           # self.intersection_pub_1.publish(point)
             
             turtle_point = np.dot(rot, POINT_ON_TURTLEBOT) + trans
             x_t, y_t, _ = turtle_point
 
-            #print('x_dot', x_dot, 'y_dot', y_dot)
             speed = np.linalg.norm([x_dot, y_dot])
             distance = np.linalg.norm([x_b-x_t,y_b-y_t])
 
-            #print('distance:', np.linalg.norm([x_b-x_t,y_b-y_t]),
-            #            'ball velocity', np.linalg.norm([x_dot, y_dot]))
             h_1 = x_dot**2 + y_dot**2 - NOMINAL_MAX_SPEED**2
             h_2 = (x_b - x_t) * x_dot + (y_b - y_t) * y_dot
             h_3 = (x_b - x_t)**2 + (y_b - y_t)**2
@@ -161,7 +164,7 @@ class PlanningProcess:
                             self.intersection_pub_2.publish(point_2)
                     if t_1 < 0 and t_2 < 0:
                         print('no solution')
-
+            
 
 
 def main():
@@ -181,6 +184,7 @@ def main():
     intersection_topic = '/intersection_point'
 
     rospy.init_node('planning')
+
     process = PlanningProcess(prediction_topic=prediction_topic,
                               intersection_topic=intersection_topic,
                               turtlebot_frame=turtlebot_frame)
