@@ -21,7 +21,7 @@ import argparse
 import matplotlib.pyplot as plt
 
 POINT_ON_TURTLEBOT = np.zeros(3)
-NOMINAL_MAX_SPEED = 0.3
+NOMINAL_MAX_SPEED = 0.5
 
 def make_point_stamped(x, y, z, now, frame_id):
     point = PointStamped()
@@ -43,14 +43,16 @@ class PlanningProcess:
                  max_deque_size=20,
                  queue_size=10,
                  points_to_check=100,
-                 time_horizon=1.0):
+                 time_horizon=1.0,
+                 epsilon=0.23,
+                 smoothed_size=3):
         """
         """
 
 
 
         self.verbosity = verbosity
-
+        self.epsilon = epsilon
         # queue of messages will be formed from data from subscribers during
         # callback then published
         self.messages = deque([], max_deque_size)
@@ -72,11 +74,14 @@ class PlanningProcess:
         self.points_to_check = points_to_check
         self.time_horizon = time_horizon
 
+        self.smoothed_size = smoothed_size
+        self.previous_goals = []
                 # set up subscribers
         self.prediction_topic_sub = rospy.Subscriber(prediction_topic,
                                                 point_vel,
                                                 self.callback)
 
+        
 
     def callback(self, point_v):
         """
@@ -134,20 +139,23 @@ class PlanningProcess:
 
             ts = np.linspace(0, self.time_horizon, self.points_to_check)
 
-            best_dist = float('inf')
-            best_point = None
-            best_turtle_point = None
             for t in ts:
                 ball_next_point = ball_point + ball_velocity * t
                 v = ball_next_point - turtle_point
                 v = v / np.linalg.norm(v) 
                 turtle_next_point = turtle_point + v * NOMINAL_MAX_SPEED * t
-                if np.linalg.norm(turtle_next_point - ball_next_point) < best_dist:
-                    best_point = ball_next_point
-                    best_turtle_point = turtle_next_point
+                dist = np.linalg.norm(turtle_next_point - ball_next_point)
+                if dist < self.epsilon:
+                    print('found point with dist:', dist)
+                    break
 
-            point = make_point_stamped(best_point[0], best_point[1], z, rospy.Time.now(), world_frame)
-            point2 = make_point_stamped(best_turtle_point[0], best_turtle_point[1], z, rospy.Time.now(), world_frame)
+            if len(self.previous_goals) == self.smoothed_size:
+                self.previous_goals.pop(0)
+            self.previous_goals.append(ball_next_point)
+            goal_point = np.mean(self.previous_goals, axis=0)
+
+            point = make_point_stamped(goal_point[0], goal_point[1], z, rospy.Time.now(), world_frame)
+            point2 = make_point_stamped(turtle_next_point[0], turtle_next_point[1], z, rospy.Time.now(), world_frame)
             self.intersection_pub_1.publish(point)
             self.intersection_pub_2.publish(point)
             #ball_path = ball_point + ball_velocity * ts
