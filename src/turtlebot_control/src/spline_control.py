@@ -11,6 +11,7 @@ from collections import deque
 import tf
 import ros_numpy
 import numpy as np
+from prediction.msg import point_vel
 
 
 # Actual speeds (roughly) of the Turtlebot in m/s and rad/s
@@ -19,7 +20,7 @@ MAX_OMEGA = 1.9
 
 class Controller:
     
-    def __init__(self, turtlebot_frame, velocity_topic, current_point_topic, queue_size=10, max_deque_size=5):
+    def __init__(self, turtlebot_frame, prediction_topic, time_horizon=1.0, points_to_check=100, queue_size=10, max_deque_size=5):
         """
     Controls a turtlebot whose position is denoted by turtlebot_frame,
     to go to a position denoted by target_frame
@@ -33,10 +34,14 @@ class Controller:
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        self.velocity_sub = rospy.Subscriber(velocity_topic, PointStamped, self.velocity_callback)
-        self.curr_pos_sub = rospy.Subscriber(current_point_topic, PointStamped, self.curr_pos_callback)
-        self.velocity_messages = deque([], max_deque_size)
-        self.curr_pos_messages = deque([], max_deque_size)
+        self.prediction_topic_sub = rospy.Subscriber(prediction_topic,
+                                                point_vel,
+                                                self.callback)
+
+        self.messages = deque([], max_deque_size)
+
+        self.time_horizon = time_horizon
+        self.points_to_check = points_to_check
 
         # Create a timer object that will sleep long enough to result in
         # a 10Hz publishing rate
@@ -44,19 +49,17 @@ class Controller:
 
         self.turtlebot_frame = turtlebot_frame
     
-    def velocity_callback(self, point):
-        self.velocity_messages.appendleft(point)
-    
-    def curr_pos_callback(self, point):
-        self.curr_pos_messages.appendleft(point)
+    def callback(self, point):
+        self.messages.appendleft(point)
     
     def publish_once_from_queue(self):
-        velocity = self.velocity_messages.pop()
-        curr_point = self.curr_pos_messages.pop()
+        point_vel = self.messages.pop()
+        curr_point = point_vel.point
+        velocity = point_vel.linear
         #time_of_sensor_measurement = curr_point.header.stamp
-        predictor_planner = Predictor_Planner(velocity.point.x, curr_point.point.x, velocity.point.y, curr_point.point.y)
-        robot_state = [curr_point.point.x, curr_point.point.y]
-        plan = predictor_planner.plan_to_intercept(robot_state)
+        predictor_planner = Predictor_Planner(velocity.x, curr_point.x, velocity.y, curr_point.y)
+        robot_state = [curr_point.x, curr_point.y]
+        plan = predictor_planner.plan_to_intercept(robot_state, self.time_horizon, self.points_to_check)
         #time_of_plan = rospy.Time.now()
         time_achieved = plan.planning_time()
 
@@ -196,12 +199,14 @@ class Predictor_Planner:
 
         return Plan(a1, b1, c1, d1, a2, b2, c2, d2)
 
-    def plan_to_intercept(self, robot_state):
+    def plan_to_intercept(self, robot_state, time_horizon, points_to_check):
         # Finds a plan to intercept the ball
 
-        for t in range(100):
+        ts = np.linspace(0, time_horizon, points_to_check)
+        for t in ts:
             # Where is the ball? That's the goal for the planner
             at_t_x, at_t_y = self.future_location(t) 
+            # TODO: Use TF transform to get current robot heading
             robot_theta = np.pi   ######################## THIS IS A PLACEHOLDER #######################
             final_state = [at_t_x, at_t_y, robot_theta]
             initial_speed = 0.2
@@ -229,11 +234,9 @@ if __name__ == '__main__':
     rospy.init_node('turtlebot_controller', anonymous=True)
 
     turtlebot_frame = 'base_link'
-    velocity_topic = '/predicted_path'
-    current_point_topic = '/avg_state_est'
-
+    prediction_topic = '/predicted_path'
     try:
-        controller = Controller(turtlebot_frame=turtlebot_frame, velocity_topic=velocity_topic, current_point_topic=current_point_topic)
+        controller = Controller(turtlebot_frame=turtlebot_frame, prediction_topic=prediction_topic)
         
         while True:
             controller.publish_once_from_queue()
