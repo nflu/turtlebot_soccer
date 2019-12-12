@@ -34,8 +34,7 @@ class Controller:
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        # TODO change back
-        self.most_recent_goal = PointStamped()
+        self.most_recent_goal = None
         self.messages = deque([], max_deque_size)
 
         # Create a timer object that will sleep long enough to result in
@@ -47,7 +46,7 @@ class Controller:
         self.arctan_inner_gain = 10.0
         self.arctan_outer_gain = 0.63
 
-        self.k_p = np.array([0.7, -1.1])
+        self.k_p = np.array([0.7, -0.6])
 
         self.k_i = np.array([0, 0])
 
