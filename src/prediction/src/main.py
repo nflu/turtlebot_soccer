@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-Main file for perception module
+Main file for prediction module
 
 run this file by running
 
-rosrun perception main.py
+rosrun prediction main.py
 
 """
 
@@ -30,6 +30,11 @@ def make_point_stamped(x, y, z, now, frame_id):
     point.header.frame_id = frame_id
     return point
 
+def stamp_to_secs(stamp):
+    return np.float128(stamp.secs + stamp.nsecs / SEC_TO_NSEC)
+
+def stamp_to_nsecs(stamp):
+    return np.float128(stamp.secs * SEC_TO_NSEC + stamp.nsecs)
 
 class PredictionProcess:
 
