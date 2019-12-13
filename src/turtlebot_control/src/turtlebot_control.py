@@ -20,14 +20,23 @@ from matplotlib import pyplot as plt
 # Define the method which contains the main functionality of the node.
 class Controller:
 
-    def __init__(self, turtlebot_frame, sub_topic, turtlebot_color, use_arctan=True, queue_size=10, max_deque_size=5, smoothing_window=5, omega_limit=1.1, linear_limit=0.65):
+    def __init__(self,
+                 turtlebot_frame,
+                 sub_topic,
+                 turtlebot_color,
+                 queue_size=10,
+                 max_deque_size=5,
+                 turn_mode=False):
         """
-    Controls a turtlebot whose position is denoted by turtlebot_frame,
-    to go to a position denoted by target_frame
-    Inputs:
-    - turtlebot_frame: the tf frame of the AR tag on your turtlebot
-    - target_frame: the tf frame of the target AR tag
-    """
+        :param turtlebot_frame:
+        :param sub_topic:
+        :param turtlebot_color:
+        :param use_arctan:
+        :param queue_size:
+        :param max_deque_size:
+        :param omega_limit:
+        :param linear_limit:
+        """
 
         # Create a publisher and a tf buffer, which is primed with a tf listener
         self.pub = rospy.Publisher('/' + turtlebot_color + '/mobile_base/commands/velocity', Twist, queue_size=queue_size)
@@ -42,11 +51,28 @@ class Controller:
         self.r = rospy.Rate(30)  # 10hz
 
         # control law
-        self.use_arctan = use_arctan
-        self.arctan_inner_gain = 10.0
-        self.arctan_outer_gain = 0.63
+        self.turn_mode = turn_mode
 
-        self.k_p = np.array([0.7, -0.6])
+        if self.turn_mode:
+            self.use_arctan = True
+            self.arctan_inner_gain = 10.0
+            self.arctan_outer_gain = 0.63
+        else:
+            self.use_arctan = True
+            self.arctan_inner_gain = 10.0
+            self.arctan_outer_gain = 0.63
+
+        if self.turn_mode:
+            self.k_p = np.array([0.7, -1.1])
+        else:
+            self.k_p = np.array([0.7, -0.6])
+
+        if self.turn_mode:
+            self.omega_limit = 0.76
+            self.linear_limit = 1.1
+        else:
+            self.omega_limit = float('inf')
+            self.linear_limit = float('inf')
 
         self.k_i = np.array([0, 0])
 
@@ -60,14 +86,9 @@ class Controller:
 
         self.turtlebot_frame = turtlebot_frame
 
-        self.omega_limit = omega_limit
-        self.linear_limit = linear_limit
-
         self.sub = rospy.Subscriber(sub_topic, PointStamped, self.callback)
 
         self.last_msg = None
-        self.controls = []
-        self.smoothing_window = smoothing_window
 
     def callback(self, point):
         self.messages.appendleft(point)
@@ -83,7 +104,7 @@ class Controller:
                 point = self.most_recent_goal.point
                 trans = self.tfBuffer.lookup_transform(self.turtlebot_frame, goal_frame, rospy.Time())
                 rot = ros_numpy.numpify(trans.transform.rotation)
-                rot =  np.array(tf.transformations.quaternion_matrix(rot)[:3, :3])
+                rot = np.array(tf.transformations.quaternion_matrix(rot)[:3, :3])
                 # Process trans to get your state error
                 # Generate a control command to send to the robot
                 msg = Twist()
@@ -92,7 +113,7 @@ class Controller:
           
                 msg.linear.x, msg.angular.z = self.control_law(np.array([point[1], point[0]]),
                                                                    time)
-                print(msg.linear.x, msg.angular.z)                    
+                print('linear control:', msg.linear.x, 'angular control:', msg.angular.z)
                 self.last_msg = msg
                 self.pub.publish(msg)
                 # Use our rate object to sleep until it is time to publish again
@@ -161,7 +182,7 @@ if __name__ == '__main__':
     controller = Controller(turtlebot_frame=turtlebot_frame, sub_topic=sub_topic,
                             turtlebot_color=turtlebot_color)
     while True:
-        raw_input('press enter to run again')
+        raw_input('press enter to run')
         print('\n running!')
         while True:
             controller.publish_once_from_queue()

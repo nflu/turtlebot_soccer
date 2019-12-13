@@ -157,11 +157,7 @@ class PlanningProcess:
             point = make_point_stamped(goal_point[0], goal_point[1], z, rospy.Time.now(), world_frame)
             point2 = make_point_stamped(turtle_next_point[0], turtle_next_point[1], z, rospy.Time.now(), world_frame)
             self.intersection_pub_1.publish(point)
-            self.intersection_pub_2.publish(point)
-            #ball_path = ball_point + ball_velocity * ts
-            #turtle_path = turtle_point + NOMINAL_MAX_SPEED * ts
-
-
+            self.intersection_pub_2.publish(point2)
 
 
 def main():
