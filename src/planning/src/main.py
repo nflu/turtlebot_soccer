@@ -42,10 +42,10 @@ class PlanningProcess:
                  verbosity=2,
                  max_deque_size=20,
                  queue_size=10,
-                 points_to_check=100,
+                 points_to_check=50,
                  time_horizon=1.0,
-                 epsilon=0.23,
-                 smoothed_size=3):
+                 epsilon=0.1,
+                 smoothed_size=5):
         """
         """
 
@@ -143,10 +143,13 @@ class PlanningProcess:
                 ball_next_point = ball_point + ball_velocity * t
                 v = ball_next_point - turtle_point
                 v = v / np.linalg.norm(v) 
-                turtle_next_point = turtle_point + v * NOMINAL_MAX_SPEED * t
-                dist = np.linalg.norm(turtle_next_point - ball_next_point)
+                for turtle_speed in [0.1, 0.2, 0.3, NOMINAL_MAX_SPEED]:
+                    turtle_next_point = turtle_point + v * turtle_speed * t
+                    dist = np.linalg.norm(turtle_next_point - ball_next_point)
+                    if dist < self.epsilon:
+                        print('found point with dist:', dist)
+                        break
                 if dist < self.epsilon:
-                    print('found point with dist:', dist)
                     break
 
             if len(self.previous_goals) == self.smoothed_size:

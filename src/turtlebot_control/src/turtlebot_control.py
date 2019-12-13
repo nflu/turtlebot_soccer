@@ -26,7 +26,7 @@ class Controller:
                  turtlebot_color,
                  queue_size=10,
                  max_deque_size=5,
-                 turn_mode=False):
+                 turn_mode=True):
         """
         :param turtlebot_frame:
         :param sub_topic:
@@ -55,22 +55,23 @@ class Controller:
 
         if self.turn_mode:
             self.use_arctan = True
-            self.arctan_inner_gain = 10.0
+            self.arctan_inner_gain = 12.0
             self.arctan_outer_gain = 0.63
+
+            self.k_p = np.array([0.7, -1.1])
+            self.k_p = np.array([0.5, -1.0])
+            self.k_p = np.array([0.7, -1.4])
+
+            self.omega_limit = 3
+            self.linear_limit = 1.1
         else:
             self.use_arctan = True
             self.arctan_inner_gain = 10.0
             self.arctan_outer_gain = 0.63
 
-        if self.turn_mode:
-            self.k_p = np.array([0.7, -1.1])
-        else:
             self.k_p = np.array([0.7, -0.6])
+            self.k_p = np.array([0.7, -1.0])
 
-        if self.turn_mode:
-            self.omega_limit = 0.76
-            self.linear_limit = 1.1
-        else:
             self.omega_limit = float('inf')
             self.linear_limit = float('inf')
 
@@ -111,7 +112,7 @@ class Controller:
                 point = np.dot(rot, ros_numpy.numpify(point)) + ros_numpy.numpify(trans.transform.translation)
 
           
-                msg.linear.x, msg.angular.z = self.control_law(np.array([point[1], point[0]]),
+                msg.linear.x, msg.angular.z = self.control_law(np.array([point[1] + 0.3, point[0]]),
                                                                    time)
                 print('linear control:', msg.linear.x, 'angular control:', msg.angular.z)
                 self.last_msg = msg
