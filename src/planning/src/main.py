@@ -36,30 +36,34 @@ def make_point_stamped(x, y, z, now, frame_id):
 class PlanningProcess:
 
     def __init__(self,
-                 state_est_topic,
                  prediction_topic,
                  intersection_topic,
-                 average_state_est,
+                 turtlebot_frame,
                  verbosity=2,
                  max_deque_size=20,
-                 queue_size=10):
+                 queue_size=10,
+                 points_to_check=100,
+                 time_horizon=1.0,
+                 epsilon=0.23,
+                 smoothed_size=3):
         """
         """
 
 
 
         self.verbosity = verbosity
-
+        self.epsilon = epsilon
         # queue of messages will be formed from data from subscribers during
         # callback then published
         self.messages = deque([], max_deque_size)
         self.messages_lock = threading.Lock()
 
-        # set up subscribers
-        self.intersection_sub = rospy.Subscriber(intersection_topic,
+
+        self.intersection_pub_1 = rospy.Publisher(intersection_topic,
                                                 PointStamped,
-                                                self.callback)
-        self.prediction_topic_sub = rospy.Publisher(prediction_topic,
+                                                queue_size=queue_size)
+
+        self.intersection_pub_2 = rospy.Publisher(intersection_topic + '2',
                                                 PointStamped,
                                                 queue_size=queue_size)
 
@@ -67,35 +71,48 @@ class PlanningProcess:
         self.listener = tf.TransformListener()
         self.turtlebot_frame = turtlebot_frame
 
+        self.points_to_check = points_to_check
+        self.time_horizon = time_horizon
+
+        self.smoothed_size = smoothed_size
+        self.previous_goals = []
+                # set up subscribers
+        self.prediction_topic_sub = rospy.Subscriber(prediction_topic,
+                                                point_vel,
+                                                self.callback)
+
+        
 
     def callback(self, point_v):
         """
         """
         # add to queue of messages
-        self.messages_lock.acquire()
         self.messages.appendleft(point_v)
-        self.messages_lock.release()
 
     def publish_once_from_queue(self):
         """
         publishes a prediction from a message in queue
         :return: None
         """
-        self.messages_lock.acquire()
         if self.messages:
             point_v = self.messages.pop()
-        else:
-            point_v = None
-        self.messages_lock.release()
 
-        if point_v:
             x_b = point_v.point.x
             y_b = point_v.point.y
             z = point_v.point.z
 
+            ball_point = np.array([x_b, y_b])
+
             x_dot = point_v.linear.x
             y_dot = point_v.linear.y
 
+            ball_velocity = np.array([x_dot, y_dot])
+
+            point = PointStamped()
+            point.point = point_v.point
+            point.header = point_v.header
+            
+            
             world_frame = point_v.header.frame_id
 
             try:
@@ -109,58 +126,41 @@ class PlanningProcess:
                     tf.ExtrapolationException) as e:
                 print(e)
                 return
+
+            point.header.stamp = rospy.Time.now()
+           # self.intersection_pub_1.publish(point)
             
             turtle_point = np.dot(rot, POINT_ON_TURTLEBOT) + trans
-            x_t, y_t, _ = turtle_point
+            turtle_point = turtle_point[:2]
 
-            #print('x_dot', x_dot, 'y_dot', y_dot)
-            speed = np.linalg.norm([x_dot, y_dot])
-            distance = np.linalg.norm([x_b-x_t,y_b-y_t])
 
-            #print('distance:', np.linalg.norm([x_b-x_t,y_b-y_t]),
-            #            'ball velocity', np.linalg.norm([x_dot, y_dot]))
-            h_1 = x_dot**2 + y_dot**2 - NOMINAL_MAX_SPEED**2
-            h_2 = (x_b - x_t) * x_dot + (y_b - y_t) * y_dot
-            h_3 = (x_b - x_t)**2 + (y_b - y_t)**2
+            speed = np.linalg.norm(ball_velocity)
+            distance = np.linalg.norm(ball_point - turtle_point)
 
-            # TODO maybe check if sufficiently close
-            if h_1 == 0:
-                t = -h_3/(2*h_2)
-                if t >= 0:
-                    point_1 = make_point_stamped(x_b + x_dot*t_1, y_b+y_dot*t, z, now, world_frame)
-                    self.intersection_pub_1.publish(point_1)
-                    if speed > 0.06:
-                        print('speed', speed)
-                        print('distance', distance)
-                   # print("intersection t", t)
-                else:
-                    print('no solution')
-            else:
-                in_sqrt = (h_2/h_1)**2 - (h_3/h_1)
-                if in_sqrt < 0:
-                    print('no solution')
-                else:
-                    t_1 = -h_2/h_1 + in_sqrt**0.5
-                    t_2 = -h_2/h_1 - in_sqrt**0.5
-                  #  print("intersection t1", t_1, "intersection t2", t_2)
-                    now = rospy.Time.now()
-                    if t_1 >= 0:
-                        point_1 = make_point_stamped(x_b + x_dot*t_1, y_b+y_dot*t_1, z, now, world_frame)
-                        self.intersection_pub_1.publish(point_1)
-                        if speed > 0.06:
-                            print('speed', speed)
-                            print('distance', distance)
-                    if t_2 >= 0:
-                        point_2 = make_point_stamped(x_b + x_dot*t_2, y_b+y_dot*t_2, z, now, world_frame)
-                        if t_1 < 0:
-                            self.intersection_pub_1.publish(point_2)
-                            if speed > 0.06:
-                                print('speed', speed)
-                                print('distance', distance)
-                        else:
-                            self.intersection_pub_2.publish(point_2)
-                    if t_1 < 0 and t_2 < 0:
-                        print('no solution')
+            ts = np.linspace(0, self.time_horizon, self.points_to_check)
+
+            for t in ts:
+                ball_next_point = ball_point + ball_velocity * t
+                v = ball_next_point - turtle_point
+                v = v / np.linalg.norm(v) 
+                turtle_next_point = turtle_point + v * NOMINAL_MAX_SPEED * t
+                dist = np.linalg.norm(turtle_next_point - ball_next_point)
+                if dist < self.epsilon:
+                    print('found point with dist:', dist)
+                    break
+
+            if len(self.previous_goals) == self.smoothed_size:
+                self.previous_goals.pop(0)
+            self.previous_goals.append(ball_next_point)
+            goal_point = np.mean(self.previous_goals, axis=0)
+
+            point = make_point_stamped(goal_point[0], goal_point[1], z, rospy.Time.now(), world_frame)
+            point2 = make_point_stamped(turtle_next_point[0], turtle_next_point[1], z, rospy.Time.now(), world_frame)
+            self.intersection_pub_1.publish(point)
+            self.intersection_pub_2.publish(point)
+            #ball_path = ball_point + ball_velocity * ts
+            #turtle_path = turtle_point + NOMINAL_MAX_SPEED * ts
+
 
 
 
@@ -181,6 +181,7 @@ def main():
     intersection_topic = '/intersection_point'
 
     rospy.init_node('planning')
+
     process = PlanningProcess(prediction_topic=prediction_topic,
                               intersection_topic=intersection_topic,
                               turtlebot_frame=turtlebot_frame)

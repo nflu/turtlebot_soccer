@@ -1,0 +1,10 @@
+For linear, at an angle scenarios:
+
+Don't clip linear or angular velocity control
+Gain on linear is 0.7, gain on angular is -0.6 (or -0.55)
+
+
+For turning scenarios:
+
+Clip linear and angular velocity controls at 0.65 and 1.1, respectively
+Gain on linear 0.7, gain on angular is -1.1

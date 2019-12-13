@@ -19,6 +19,10 @@ and
 
 `roslaunch turtlebot_bringup 3dsensor.launch`
 
+teleop:
+
+`roslaunch turtlebot_teleop keyboard_teleop.launch --screen`
+
 ## Perception
 
 Grab a big tripod instead of the small one that comes with the realsense.
@@ -62,7 +66,7 @@ To view the ball location in rviz run
 
 To check the speed of everything run 
 
-`rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate /predicted_point`
+`rostopic hz /camera/color/image_raw /camera/aligned_depth_to_color/image_raw /state_estimate /predicted_point /predicted_path /intersection_point`
 
 they should all be around 30 hz.
 

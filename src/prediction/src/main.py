@@ -124,11 +124,14 @@ class PredictionProcess:
 
                     point_v = point_vel()
                     # TODO maybe change to averaged_point_2
-                    point_v.point = state_estimate.point
+                    point_v.point.x = x
+                    point_v.point.y = y
+                    point_v.point.z = z
                     point_v.linear.x = x_dot * SEC_TO_NSEC
                     point_v.linear.y = y_dot * SEC_TO_NSEC
                     point_v.linear.z = 0
                     point_v.header = predicted_point.header
+                    point_v.header.stamp = rospy.Time.now()
 
                     self.average_point_pub_2.publish(averaged_point2)
                     self.predicted_point_pub.publish(predicted_point)
@@ -174,9 +177,9 @@ def main():
     state_est_topic = '/state_estimate'
 
     # publishing topics
-    prediction_topic = '/predicted_path'
+    prediction_topic = '/predicted_path'   # Gives velocity
     predicted_point_topic = '/predicted_point'
-    averaged_state_est_topic = '/avg_state_est'
+    averaged_state_est_topic = '/avg_state_est'  # Gives most recent 5 sensor measurements averaged up
     # setup ros subs, pubs and connect to realsense
     rospy.init_node('prediction')
     process = PredictionProcess(state_est_topic=state_est_topic,
