@@ -78,7 +78,7 @@ where `{turtlebot_frame}` is the frame of the turtlebot.
 ## Control
 
 ### Interception
-`rosrun turtlebot_control turtlebot_control.py {color}`
+`rosrun turtlebot_control turtlebot_control.py {color} {turtlebot_frame}`
 
 where `{color}` is the color of the turtlebot. 
 

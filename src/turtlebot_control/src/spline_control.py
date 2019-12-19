@@ -97,7 +97,6 @@ class Controller:
             msg.angular.z = control_omega
 
             self.pub.publish(msg)
-            self.time = rospy.get_time()
             # Use our rate object to sleep until it is time to publish again
             self.r.sleep()
 
@@ -271,7 +270,7 @@ if __name__ == '__main__':
     rospy.init_node('spline_turtlebot_controller', anonymous=True)
 
     turtlebot_frame = args.turtle_frame if args.turtle_frame else 'base_link'
-    sub_topic = args.goal_topic if args.goal_topic else '/predicted_point'
+    sub_topic = args.goal_topic if args.goal_topic else '/predicted_path'
     turtlebot_color = args.color 
     world_frame = args.world_frame if args.world_frame else 'ar_marker_13'
     
