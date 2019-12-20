@@ -113,7 +113,7 @@ If we assume that the ball and robot are both points that move at a constant spe
 ## Problem
 This method seeks to find a point where the two points intersect exactly thus sometimes solutions would be up to 400 meters away. This is because the turtlebot would barely miss the ball if meeting it close so it has to chase it and catch up far away. Additionally this method is very sensitive and due to noise in the positions and velocities the solution point would jump around frequently. 
 
-<img src = "https://nelugovoy.com/far_away_interception.png">
+<img src = "https://neillugovoy.com/far_away_interception.png">
 
 ## Solution
 Instead of finding an exact intersection we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
