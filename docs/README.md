@@ -71,6 +71,26 @@ The perception works quite well and if it isn't displaying images will run as fa
 
 # Prediction
 
+Now that we had estimates of where the ball is we wanted to predict where it is going. We assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
+
+## Problem
+
+There is noise in the position estimate. If the position estimate ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). 
+
+## Solution
+
+From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise is near zero mean. 
+
+## New Problem
+
+This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame and back in the estimates Another downside is that the window must fill up with values before it can make estimates.
+
+## Solution
+
+We tuned the size of the window to improve this tradeoff and also set a cutoff 
+
+TODO include graphic here
+
 
 
 # Planning
