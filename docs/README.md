@@ -1,3 +1,7 @@
+---
+latex: yes
+---
+
 # Project Overview
 
 Imagine a robot playing soccer. Nearly every action requires the robot to first **intercept a rolling ball**. For example, interception is all that is required for defending a goal. To make a shot on goal or pass to another player the ball must be intercepted and then hit to a target location. 
