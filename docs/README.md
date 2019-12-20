@@ -9,7 +9,7 @@ Imagine a robot playing soccer. Nearly every action requires the robot to first 
 ## Autonomy Stack
 We split our task into these steps. Our project is organized by having each of these blocks as a distinct ROS package.
 <img src = "visuals/block_diagram.PNG"/>
-1. To detect and track the ball with the RGB and aligned Depth image
+1. To detect and track the ball with the RGB and aligned depth image
 2. Predict the velocity of the ball
 3. Plan an interception point
 4. Move the TurtleBot to the desired position
@@ -71,6 +71,7 @@ The perception works quite well and if it isn't displaying images will run as fa
 
 # Prediction
 
+<<<<<<< HEAD
 Now that we had estimates of where the ball is we wanted to predict where it is going. We assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
 
 ## Problem
@@ -91,11 +92,22 @@ We tuned the size of the window to improve this tradeoff and also set a cutoff
 
 TODO include graphic here
 
-
-
 # Planning
+
+
 
 # Control and Actuation
 
+Given the interception point outputted by our planning module, we implemented a simple proportional controller to give the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
+
+
 # Demos
 <iframe class="video" src="https://www.youtube.com/watch?v=AVnXz0teLzA" frameborder="0" gesture="media" allow="encrypted-media" allowfullscreen></iframe>
+
+# Conclusion
+
+# Team
+### Angela Wang
+### Khadijah Flowers
+### Neil Lugovoy
+### Sampada Deglurkar
