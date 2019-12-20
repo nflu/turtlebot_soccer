@@ -93,39 +93,34 @@ From a signal processing perspective taking a numerical derivative of a noisy si
 
 ## New Problem
 
-This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame and back in the estimates Another downside is that the window must fill up with values before it can make estimates.
+This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame, moves and then comes back in the velocity will be wildly inaccurate. Another downside is that the window must fill up with values before it can make velocity estimates, thus there will be some lag between the first position estimate and the first velocity estimate.
 
 ## Solution
 
-We tuned the size of the window to improve this tradeoff and also set a cutoff 
+We tuned the size of the window to improve this tradeoff and also set a cutoff for how old of state estimates we would use. Thus if we didn't receive state estimates for a while we would throw out old samples. To fill up the window with values we started the ball in the frame before rolling it.
 
 <!-- TODO include graphic here -->
 
 
 # Planning
 
-The goal of this module is to find the point of interception of the ball and robot. The simple solution we found to this was to assume that the robot moves in a straight line at various nominal speeds. Taking the predictions for where the ball would be for various times up to 1 second into the future, we chose the earliest time that the robot could reach that location. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+The goal of this module is to find the point of interception of the ball and robot. 
 
-```
-Pseudocode:
+If we assume that the ball and robot are both points that move at a constant speed and we simply choose the direction of the robot (and hence the interception point), the point can be found by [solving a system of equations.](https://jaran.de/goodbits/2011/07/17/calculating-an-intercept-course-to-a-target-with-constant-direction-and-velocity-in-a-2-dimensional-plane/)
 
-Given: Black box predict_ball(t) from prediction module
-speeds = [set of possible speeds for the robot]
-times = [times from 0 to 1 second]
-turtlebot_pt = current location of the robot
+<img src = "https://neillugovoy.com/exact_interception.png">
 
-for t in times:
-    ball_pt = predict_ball(t)
-    movement_vector = 
-        normalize(ball_pt - turtlebot_pt)
-    for s in speeds:
-        turtlebot_next_pt = 
-            turtlebot_pt + (movement_vector * s * t)
-        dist = distance(turtlebot_next_pt, ball_pt)
-        if dist < epsilon:
-            return turtlebot_next_pt
-```
+## Problem
+This method seeks to find a point where the two points intersect exactly thus sometimes solutions would be up to 400 meters away. This is because the turtlebot would barely miss the ball if meeting it close so it has to chase it and catch up far away. Additionally this method is very sensitive and due to noise in the positions and velocities the solution point would jump around frequently. 
 
+<img src = "https://nelugovoy.com/far_away_interception.png">
+
+## Solution
+Instead of finding an exact intersection we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
+
+Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at different speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+
+<img src = "https://neillugovoy.com/planning.png">
 
 # Control and Actuation
 
