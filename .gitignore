@@ -1,8 +1,6 @@
 *.pyc
 *.npy
 
-*.png
-*.jpg
 .catkin_workspace
 
 build/
