@@ -6,10 +6,17 @@ latex: yes
 
 Imagine a robot playing soccer. Nearly every action requires the robot to first **intercept a rolling ball**. For example, interception is all that is required for defending a goal. To make a shot on goal or pass to another player the ball must be intercepted and then hit to a target location. 
 
+The challenge from this project is to have working perception, prediction, planning, as well as control modules and then to integrate these modules into a full stack. Overall, our approach was one of a **feedback loop** involving this full stack in order to have the robot interact with the ball in real time and also so that our design would be robust to modeling errors. 
+
+<img src = "visuals/intro_image.PNG"/>
+
+Thus, our project is broadly applicable to any robotic domain in a system must perform tasks in dynamic environments and in which vision is a main source of sensing. These environments can not only include moving objects such as the ball in our case, but also other agents, whose motion can also be predicted forward in time with some extension to our work. 
+
+
 ## Autonomy Stack
 We split our task into these steps. Our project is organized by having each of these blocks as a distinct ROS package.
 <img src = "visuals/block_diagram.PNG"/>
-1. To detect and track the ball with the RGB and aligned depth image
+1. To detect and track the ball
 2. Predict the velocity of the ball
 3. Plan an interception point
 4. Move the TurtleBot to the desired position
@@ -71,8 +78,10 @@ The perception works quite well and if it isn't displaying images will run as fa
 
 # Prediction
 
-<<<<<<< HEAD
-Now that we had estimates of where the ball is we wanted to predict where it is going. We assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
+Now that we had estimates of where the ball is we wanted to predict where it is going. We used a linear model of the ball in that we assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
+
+$x_{ball}(t) = x_{0, ball} + v_{x, ball}t$
+$y_{ball}(t) = y_{0, ball} + v_{y, ball}t$
 
 ## Problem
 
@@ -90,19 +99,57 @@ This adds a tunable parameter of how big to make the window for the average. A l
 
 We tuned the size of the window to improve this tradeoff and also set a cutoff 
 
-TODO include graphic here
+<!-- TODO include graphic here -->
+
 
 # Planning
 
+The goal of this module is to find the point of interception of the ball and robot. The simple solution we found to this was to assume that the robot moves in a straight line at various nominal speeds. Taking the predictions for where the ball would be for various times up to 1 second into the future, we chose the earliest time that the robot could reach that location. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+
+```
+Pseudocode:
+
+Given: Black box predict_ball(t) from prediction module
+speeds = [set of possible speeds for the robot]
+times = [times from 0 to 1 second]
+turtlebot_pt = current location of the robot
+
+for t in times:
+    ball_pt = predict_ball(t)
+    movement_vector = 
+        normalize(ball_pt - turtlebot_pt)
+    for s in speeds:
+        turtlebot_next_pt = 
+            turtlebot_pt + (movement_vector * s * t)
+        dist = distance(turtlebot_next_pt, ball_pt)
+        if dist < epsilon:
+            return turtlebot_next_pt
+```
 
 
 # Control and Actuation
 
 Given the interception point outputted by our planning module, we implemented a simple proportional controller to give the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
 
+### Problem
+With our proportional controller, our TurtleBot would not aggressive enough when it got closer to ball. If the TurtleBot slowed down near the ball, it would get close to intercepting the ball, but never actually hitting it.
+
+<img src = "proportional_control.gif">
+
+### Solution
+1. To make our controller act more aggressive, we decided to put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at most distances away from the ball. 
+
+<img src = "arctan.PNG">
+
+<img src = "aggressive_controller.PNG">
+
+
+
+
+
 
 # Demos
-<iframe class="video" src="https://www.youtube.com/watch?v=AVnXz0teLzA" frameborder="0" gesture="media" allow="encrypted-media" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 # Conclusion
 
