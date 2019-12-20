@@ -1,1 +1,14 @@
 theme: jekyll-theme-slate
+
+title: EE C106a Turtlebot Soccer
+description: Project Website
+author: Angela, Khadijah, Sampada, Neil
+
+# remote_theme: pmarsceill/just-the-docs@v0.2.5-release
+color_scheme: light
+search_enabled: true
+permalink: pretty
+defaults:
+  - scope:
+      path: ''
+      type: videos
