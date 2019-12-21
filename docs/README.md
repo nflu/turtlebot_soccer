@@ -31,8 +31,6 @@ Using the RGB and depth images from a [Intel Realsense 435i camera](https://www.
 ## RGB Segmentation
 We need to determine which pixels correspond to the ball so we applied a gaussian blur to smooth the edges and RGB thresholded to find the purple pixels.
 
-<!-- TODO insert screenshot of thresholder tool -->
-
 ### Problem
 Other objects in the room like part of the chair cushions or clothing were in the purple range would cause **false positives**. Also sometimes due to sensor noise a random pixel would fall into the RGB range.
 
@@ -62,12 +60,12 @@ thus w=z which is the depth of (u,v) which we can get from the depth image! Thus
 <img src = "https://neillugovoy.com/perception_rviz.PNG"/>
 This rviz screen shows all the frames that we had. AR Marker 13 defines the world frame, the pink point is our prediction of where the soccer ball is, and AR Marker 4 is where the TurtleBot is. We can also see the camera optical frame relative to the world frame. 
 
-## Problem
+### Problem
 The depth image was very noisy for anything more than about 1.5 meters away. We observed variance of up to a meter on a single point in a stationary frame.
 
 <!-- TODO insert noisy depth image -->
 
-## Solution
+### Solution
 1. We read about how the depth camera works. It uses an IR blaster and two IR cameras. In rooms with a lot of harsh lighting (such as the lab room) these sensors can be overexposed. We also read [this doc](https://www.intel.com/content/dam/support/us/en/documents/emerging-technologies/intel-realsense-technology/BKMs_Tuning_RealSense_D4xx_Cam.pdf) on tuning the Realsense and tuned the Realsense parameters for a couple hours until it worked better
 2. The depth sensor will sometimes not be able to determine the depth of a point and will output 0. We set the state estimator to ignore these values instead of using them.
 <img src = "https://neillugovoy.com/perception_depth.PNG"/>
@@ -80,19 +78,19 @@ The perception works quite well and if it isn't displaying images will run as fa
 
 Now that we had estimates of where the ball is we wanted to predict where it is going. We used a linear model of the ball in that we assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
 
-## Problem
+### Problem
 
 There is noise in the position estimate. If the position estimate of the ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). Thus even for a stationary ball we noticed non-negligible velocity estimates in random directions and when moving the velocity estimate would vary dramatically.
 
-## Solution
+### Solution
 
 From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise has a near zero mean. 
 
-## New Problem
+### New Problem
 
 This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame, moves and then comes back in the velocity will be wildly inaccurate. Another downside is that the window must fill up with values before it can make velocity estimates, thus there will be some lag between the first position estimate and the first velocity estimate.
 
-## New Solution
+### New Solution
 
 We tuned the size of the window to improve this tradeoff and also set a cutoff for how old of state estimates we would use. Thus if we didn't receive state estimates for a while we would throw out old samples. To fill up the window with values we started the ball in the frame before rolling it.
 
@@ -107,12 +105,12 @@ If we assume that the ball and robot are both points that move at a constant spe
 
 <img src = "https://neillugovoy.com/exact_interception.png">
 
-## Problem
+### Problem
 This method seeks to find a point where the two points intersect exactly thus sometimes solutions would be up to 400 meters away. This is because the turtlebot would barely miss the ball if meeting it close so it has to chase it and catch up far away. Additionally this method is very sensitive and due to noise in the positions and velocities the solution point would jump around frequently. 
 
 <img src = "https://neillugovoy.com/far_away_interception.png">
 
-## Solution
+### Solution
 Instead of finding an exact interception we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
 
 Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at a constant speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
@@ -162,19 +160,22 @@ With a proportional controller, the Turtlebot would slow down dramatically when 
 <img src = "https://neillugovoy.com/proportional_control.gif">
 
 ### Solution
-To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
+To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball.
+
+<img src = "https://neillugovoy.com/arctan.png">
 
 ### New Problem
-Another thing we noticed was that due to the Turtlebot's two-wheel design, the Turtlebot had trouble going forward and turning at the same time. For this reason, our robot couldn't perform maneuvers necessary for certain interception scenarios.
+Due to the Turtlebot's two-wheel design and aggressive control inputs, the Turtlebot had trouble going forward and turning at the same time. For this reason, our robot couldn't perform maneuvers necessary for certain interception scenarios.
 
 <img src = "https://neillugovoy.com/turn_too_long.gif">
 
 
-### New Solution 2
-Our controller gains were tuned for two different cases: while one case involved turning maneuvers, the other case involved non-turning maneuvers. When turning, the Turtlebot's linear velocity would have to be clipped, though this was not necessary for the non-turning case. 
+### New Solution
+We clipped the control inputs to be within the range where the turtlebot could still turn while moving forward. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
 
-<img src = "https://neillugovoy.com/arctan.png">
+### Dealing with Non-holonomic constraints
 
+Initially we tried to use a spline planner that took into account the fact that the turtlebot can only move along the axis it is pointing. However we found that this planner did not work well in practice. You can see a gif of it in simulation below. Thus instead we just use velocities lower than the actual top speed of the turtlebot so time spent turning would be accounted for. We could have added more complexity about the actual velocity the turtlebot can travel but in general we found the planner to be too pessismistic rather than optimistic.
 
 <img src = "https://neillugovoy.com/spline_simulation.gif">
 
