@@ -129,7 +129,7 @@ Given the interception point outputted by our planning module, we implemented a 
 ### Problem
 With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "https://neillugovoy.com/proportional_control.gif">
+<img src = "visuals/proportional_controller.gif">
 
 ### Solution
 To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
