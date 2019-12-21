@@ -80,8 +80,8 @@ The perception works quite well and if it isn't displaying images will run as fa
 
 Now that we had estimates of where the ball is we wanted to predict where it is going. We used a linear model of the ball in that we assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
 
-$x_{ball}(t) = x_{0, ball} + v_{x, ball}t$
-$y_{ball}(t) = y_{0, ball} + v_{y, ball}t$
+$$x_{ball}(t) = x_{0, ball} + v_{x, ball}t$$
+$$y_{ball}(t) = y_{0, ball} + v_{y, ball}t$$
 
 ## Problem
 
