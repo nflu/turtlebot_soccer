@@ -57,7 +57,7 @@ If we assume that the image is generated via a pinhole camera model then the fol
 Where K is the camera matrix. Note that K is upper triangular with 1 in the bottom row 
 <img src = "https://neillugovoy.com/k_matrix.png"/>
 
-thus w=z which is the depth of (u,v) which we can get from the depth image! Thus we can construct solve the linear system for the point in the camera frame!
+thus w=z which is the depth of (u,v) which we can get from the depth image! Thus we can construct (u',v',w') and solve the linear system for the point in the camera frame!
 
 <img src = "https://neillugovoy.com/perception_rviz.PNG"/>
 This rviz screen shows all the frames that we had. AR Marker 13 defines the world frame, the pink point is our prediction of where the soccer ball is, and AR Marker 4 is where the TurtleBot is. We can also see the camera optical frame relative to the world frame. 
@@ -92,7 +92,7 @@ From a signal processing perspective taking a numerical derivative of a noisy si
 
 This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame, moves and then comes back in the velocity will be wildly inaccurate. Another downside is that the window must fill up with values before it can make velocity estimates, thus there will be some lag between the first position estimate and the first velocity estimate.
 
-## Solution
+## New Solution
 
 We tuned the size of the window to improve this tradeoff and also set a cutoff for how old of state estimates we would use. Thus if we didn't receive state estimates for a while we would throw out old samples. To fill up the window with values we started the ball in the frame before rolling it.
 
@@ -121,21 +121,21 @@ Thus we just simulated where the ball would be at times within 1 second and chec
 
 In this diagram (not to scale) we see the different points the ball will be at various times and the radius of acceptable interception distance around each point. The dotted line indicates where the robot will be.
 
-### Problem
+### New Problem
 If we assume that the TurtleBot could move at one speed, the interception point will change to a different point that is further away. This is because we assume that the Turtlebot can only move at one speed and not slower, so as we approach the soccer ball the point moves.
 
 <img src = "https://neillugovoy.com/bad_interception.gif">
 
 In this gif you can see that the TurtleBot approaches the soccer ball, then backs up and turns, because we input a different interception point. 
 
-### Solution
+### New Solution
 We assume that the TurtleBot moves in a straight line now at various nominal speeds. Then we iterate through the speeds, from slowest to fastest, and find the first point where the distance between the TurtleBot and soccer ball is within our desired threshold. 
 
 
 ```
 Pseudocode:
 
-Given: Black box predict_ball(t) from prediction module
+Given: predict_ball(t) from prediction module
 speeds = [set of possible speeds for the robot]
 times = [times from 0 to 1 second]
 turtlebot_pt = current location of the robot
@@ -156,21 +156,21 @@ for t in times:
 
 Given the interception point outputted by our planning module, we implemented a simple proportional controller to move the robot to that point as quickly as possible. The controller gives the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
 
-### Problem 1
+### Problem
 With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "https://github.com/nflu/turtlebot_soccer/blob/master/docs/visuals/proportional_controller.gif">
+<img src = "https://neillugovoy.com/proportional_control.gif">
 
-### Solution 1
+### Solution
 To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
 
-### Problem 2
+### New Problem
 Another thing we noticed was that due to the Turtlebot's two-wheel design, the Turtlebot had trouble going forward and turning at the same time. For this reason, our robot couldn't perform maneuvers necessary for certain interception scenarios.
 
 <img src = "https://neillugovoy.com/turn_too_long.gif">
 
 
-### Solution 2
+### New Solution 2
 Our controller gains were tuned for two different cases: while one case involved turning maneuvers, the other case involved non-turning maneuvers. When turning, the Turtlebot's linear velocity would have to be clipped, though this was not necessary for the non-turning case. 
 
 <img src = "https://neillugovoy.com/arctan.png">
