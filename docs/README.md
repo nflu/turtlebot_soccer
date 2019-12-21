@@ -123,7 +123,7 @@ Thus we just simulated where the ball would be at times within 1 second and chec
 ### Problem
 If we assume that the TurtleBot could move at one speed, the interception point will change to a different point that is further away. This is because we assume that the Turtlebot can only move at one speed and not slower, so as we approach the soccer ball the point moves.
 
-<img src = "bad_interception.gif">
+<img src = "https://neillugovoy.com/bad_interception.gif">
 
 In this gif you can see that the TurtleBot approaches the soccer ball, then backs up and turns, because we input a different interception point. 
 
@@ -159,7 +159,7 @@ Given the interception point outputted by our planning module, we implemented a 
 ### Problem 1
 With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "https://neillugovoy.com/proportional_controller.gif">
+<img src = "https://github.com/nflu/turtlebot_soccer/blob/master/docs/visuals/proportional_controller.gif">
 
 ### Solution 1
 To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
@@ -167,13 +167,16 @@ To make our controller act more aggressively, we put our error through an arctan
 ### Problem 2
 Another thing we noticed was that due to the Turtlebot's two-wheel design, the Turtlebot had trouble going forward and turning at the same time. For this reason, our robot couldn't perform maneuvers necessary for certain interception scenarios.
 
-<img src = "turn_too_long.gif">
+<img src = "https://neillugovoy.com/turn_too_long.gif">
 
 
 ### Solution 2
 Our controller gains were tuned for two different cases: while one case involved turning maneuvers, the other case involved non-turning maneuvers. When turning, the Turtlebot's linear velocity would have to be clipped, though this was not necessary for the non-turning case. 
 
 <img src = "https://neillugovoy.com/arctan.png">
+
+
+<img src = "https://neillugovoy.com/spline_simulation.gif">
 
 # Demos
 <iframe width="560" height="315" src="https://www.youtube.com/embed/Avs59YVElMI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
