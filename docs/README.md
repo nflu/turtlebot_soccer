@@ -85,68 +85,56 @@ $y_{ball}(t) = y_{0, ball} + v_{y, ball}t$
 
 ## Problem
 
-There is noise in the position estimate. If the position estimate ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). 
+There is noise in the position estimate. If the position estimate of the ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). Thus even for a stationary ball we noticed non-negligible velocity estimates in random directions and when moving the velocity estimate would vary dramatically.
 
 ## Solution
 
-From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise is near zero mean. 
+From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise has a near zero mean. 
 
 ## New Problem
 
-This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame and back in the estimates Another downside is that the window must fill up with values before it can make estimates.
+This adds a tunable parameter of how big to make the window for the average. A larger window results in lower noise estimates but it will be using older (potentially unrepresentative) data. If the ball suddenly goes out of frame, moves and then comes back in the velocity will be wildly inaccurate. Another downside is that the window must fill up with values before it can make velocity estimates, thus there will be some lag between the first position estimate and the first velocity estimate.
 
 ## Solution
 
-We tuned the size of the window to improve this tradeoff and also set a cutoff 
+We tuned the size of the window to improve this tradeoff and also set a cutoff for how old of state estimates we would use. Thus if we didn't receive state estimates for a while we would throw out old samples. To fill up the window with values we started the ball in the frame before rolling it.
 
 <!-- TODO include graphic here -->
 
 
 # Planning
 
-The goal of this module is to find the point of interception of the ball and robot. The simple solution we found to this was to assume that the robot moves in a straight line at various nominal speeds. Taking the predictions for where the ball would be for various times up to 1 second into the future, we chose the earliest time that the robot could reach that location. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+The goal of this module is to find the point of interception of the ball and robot. 
 
-```
-Pseudocode:
+If we assume that the ball and robot are both points that move at a constant speed and we simply choose the direction of the robot (and hence the interception point), the point can be found by [solving a system of equations.](https://jaran.de/goodbits/2011/07/17/calculating-an-intercept-course-to-a-target-with-constant-direction-and-velocity-in-a-2-dimensional-plane/)
 
-Given: Black box predict_ball(t) from prediction module
-speeds = [set of possible speeds for the robot]
-times = [times from 0 to 1 second]
-turtlebot_pt = current location of the robot
+<img src = "https://neillugovoy.com/exact_interception.png">
 
-for t in times:
-    ball_pt = predict_ball(t)
-    movement_vector = 
-        normalize(ball_pt - turtlebot_pt)
-    for s in speeds:
-        turtlebot_next_pt = 
-            turtlebot_pt + (movement_vector * s * t)
-        dist = distance(turtlebot_next_pt, ball_pt)
-        if dist < epsilon:
-            return turtlebot_next_pt
-```
+## Problem
+This method seeks to find a point where the two points intersect exactly thus sometimes solutions would be up to 400 meters away. This is because the turtlebot would barely miss the ball if meeting it close so it has to chase it and catch up far away. Additionally this method is very sensitive and due to noise in the positions and velocities the solution point would jump around frequently. 
 
+<img src = "https://neillugovoy.com/far_away_interception.png">
+
+## Solution
+Instead of finding an exact interception we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
+
+Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at different speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+
+<img src = "https://neillugovoy.com/planning.png">
 
 # Control and Actuation
 
-Given the interception point outputted by our planning module, we implemented a simple proportional controller to give the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
+Given the interception point outputted by our planning module, we implemented a simple proportional controller to move the robot to that point as quickly as possible. The controller gives the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
 
 ### Problem
-With our proportional controller, our TurtleBot would not aggressive enough when it got closer to ball. If the TurtleBot slowed down near the ball, it would get close to intercepting the ball, but never actually hitting it.
+With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "proportional_control.gif">
+<img src = "visuals/proportional_controller.gif">
 
 ### Solution
-1. To make our controller act more aggressive, we decided to put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at most distances away from the ball. 
+To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
 
-<img src = "arctan.PNG">
-
-<img src = "aggressive_controller.PNG">
-
-
-
-
-
+<img src = "https://neillugovoy.com/arctan.png">
 
 # Demos
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
