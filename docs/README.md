@@ -205,8 +205,10 @@ Extensions to our work would include using the Turtlebot's onboard camera to imp
 
 # Team
 ### Angela Wang
+Angela is a fourth year EECS major interested in signals and systems. She does robotic simulation research with Professor Ron Fearing and communication network research with Professor Shyam Parekh. She contributed to all of the perception, planning, prediction, and control modules. 
 ### Khadijah Flowers
+Khadijah is a fourth year CS major. 
 ### Neil Lugovoy
-Neil is a fourth year CS major who does research in Professor Claire Tomlin's lab on safe learning in robotics. In this project, he contributed to all of the perception, planning, and control modules and also worked heavily on integration. 
+Neil is a fourth year CS major who does research in Professor Claire Tomlin's lab on safe learning in robotics. In this project, he contributed to all of the perception, planning, prediction, and control modules and also worked heavily on integration. 
 ### Sampada Deglurkar
 Sampada is a fourth year EECS major. She worked mainly on the prediction, planning, and control sides of the project and also helped with integration.
