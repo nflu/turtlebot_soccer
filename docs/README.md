@@ -8,14 +8,14 @@ Imagine a robot playing soccer. Nearly every action requires the robot to first 
 
 The challenge from this project is to have working perception, prediction, planning, as well as control modules and then to integrate these modules into a full stack. Overall, our approach was one of a **feedback loop** involving this full stack in order to have the robot interact with the ball in real time and also so that our design would be robust to modeling errors. 
 
-<img src = "visuals/intro_image.PNG"/>
+<img src = "https://neillugovoy.com/intro_image.PNG"/>
 
 Thus, our project is broadly applicable to any robotic domain in a system must perform tasks in dynamic environments and in which vision is a main source of sensing. These environments can not only include moving objects such as the ball in our case, but also other agents, whose motion can also be predicted forward in time with some extension to our work. 
 
 
 ## Autonomy Stack
 We split our task into these steps. Our project is organized by having each of these blocks as a distinct ROS package.
-<img src = "visuals/block_diagram.PNG"/>
+<img src = "https://neillugovoy.com/block_diagram.PNG"/>
 1. To detect and track the ball
 2. Predict the velocity of the ball
 3. Plan an interception point
@@ -36,17 +36,17 @@ We need to determine which pixels correspond to the ball so we applied a gaussia
 ### Problem
 Other objects in the room like part of the chair cushions or clothing were in the purple range would cause **false positives**. Also sometimes due to sensor noise a random pixel would fall into the RGB range.
 
-<img src = "visuals/perception_purple.PNG"/>
+<img src = "https://neillugovoy.com/perception_purple.PNG"/>
 
 ### Solution
 1. Since the ball is quite reflective and the room has bright lights the color varies dramatically from the top of the ball to the bottom. Instead of using an RGB range that fit the entire ball into the range we used a range that just fit the center of the ball where it is widest. 
-<img src = "visuals/perception_mask.PNG"/>
+<img src = "https://neillugovoy.com/perception_mask.PNG"/>
 
 2. We performed erosion (removing pixels from boundary) on the mask and then dilation (adding pixels to boundary).  Erosion removes small connected components in the mask and thus eliminates small false positives. Since the RGB range was much tighter the false positives were sufficiently small to be eroded away.
 
 From the mask we found all minimum enclosing circles of the connected components of hot pixels. Then we took the **largest** such circle. This is important because it means that all hot pixels on the ball will be enclosed and small false positives will be eliminated. Since the hot pixels are a strip where the ball is widest the circle fits to the ball quite nicely. 
 
-<img src = "visuals/perception_color_thresholding.PNG"/>
+<img src = "https://neillugovoy.com/perception_color_thresholding.PNG"/>
 The yellow circle is our prediction of the ball location. The red contrail is made up of our last twenty predictions. 
 
 Then we get the coordinates of the center pixel of that circle $(u, v)$.
@@ -59,7 +59,7 @@ $$K = \begin{bmatrix} f_x & f_y & x_0\\ 0 & f_y & y_0\\ 0& 0 & 1
 			\end{bmatrix} $$
 thus $w=z$ which is the depth of $(u,v)$ which we can get from the depth image! Thus we can construct $[u', v', w]^{T}$ and solve the linear system for $[x,y,z]^{T}$!
 
-<img src = "visuals/perception_rviz.PNG"/>
+<img src = "https://neillugovoy.com/perception_rviz.PNG"/>
 This rviz screen shows all the frames that we had. AR Marker 13 defines the world frame, the pink point is our prediction of where the soccer ball is, and AR Marker 4 is where the TurtleBot is. We can also see the camera optical frame relative to the world frame. 
 
 ## Problem
@@ -70,11 +70,11 @@ The depth image was very noisy for anything more than about 1.5 meters away. We 
 ## Solution
 1. We read about how the depth camera works. It uses an IR blaster and two IR cameras. In rooms with a lot of harsh lighting (such as the lab room) these sensors can be overexposed. We also read [this doc](https://www.intel.com/content/dam/support/us/en/documents/emerging-technologies/intel-realsense-technology/BKMs_Tuning_RealSense_D4xx_Cam.pdf) on tuning the Realsense and tuned the Realsense parameters for a couple hours until it worked better
 2. The depth sensor will sometimes not be able to determine the depth of a point and will output 0. We set the state estimator to ignore these values instead of using them.
-<img src = "visuals/perception_depth.PNG"/>
+<img src = "https://neillugovoy.com/perception_depth.PNG"/>
 We mapped the depths from the depth image onto a red to blue range of colors. The yellow circle is our prediction of the ball location. 
 
 The perception works quite well and if it isn't displaying images will run as fast as it receives images from the camera.
-<img src = "visuals/perception_gif.gif">
+<img src = "https://neillugovoy.com/perception_gif.gif">
 
 # Prediction
 
@@ -118,28 +118,75 @@ This method seeks to find a point where the two points intersect exactly thus so
 ## Solution
 Instead of finding an exact interception we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
 
-Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at different speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at a constant speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
+
+### Problem
+If we assume that the TurtleBot could move at one speed, the interception point will change to a different point that is further away. This is because we assume that the Turtlebot can only move at one speed and not slower, so as we approach the soccer ball the point moves.
+
+<img src = "bad_interception.gif">
+
+In this gif you can see that the TurtleBot approaches the soccer ball, then backs up and turns, because we input a different interception point. 
+
+### Solution
+We assume that the TurtleBot moves in a straight line now at various nominal speeds. Then we iterate through the speeds, from slowest to fastest, and find the first point where the distance between the TurtleBot and soccer ball is within our desired threshold. 
 
 <img src = "https://neillugovoy.com/planning.png">
+
+```
+Pseudocode:
+
+Given: Black box predict_ball(t) from prediction module
+speeds = [set of possible speeds for the robot]
+times = [times from 0 to 1 second]
+turtlebot_pt = current location of the robot
+
+for t in times:
+    ball_pt = predict_ball(t)
+    movement_vector = 
+        normalize(ball_pt - turtlebot_pt)
+    for s in speeds:
+        turtlebot_next_pt = 
+            turtlebot_pt + (movement_vector * s * t)
+        dist = distance(turtlebot_next_pt, ball_pt)
+        if dist < epsilon:
+            return turtlebot_next_pt
+```
 
 # Control and Actuation
 
 Given the interception point outputted by our planning module, we implemented a simple proportional controller to move the robot to that point as quickly as possible. The controller gives the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
 
-### Problem
+### Problem 1
 With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "visuals/proportional_controller.gif">
+<img src = "https://neillugovoy.com/proportional_controller.gif">
 
-### Solution
+### Solution 1
 To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
+
+### Problem 2
+Another thing we noticed was that due to the Turtlebot's two-wheel design, the Turtlebot had trouble going forward and turning at the same time. For this reason, our robot couldn't perform maneuvers necessary for certain interception scenarios.
+
+<img src = "turn_too_long.gif">
+
+
+### Solution 2
+Our controller gains were tuned for two different cases: while one case involved turning maneuvers, the other case involved non-turning maneuvers. When turning, the Turtlebot's linear velocity would have to be clipped, though this was not necessary for the non-turning case. 
 
 <img src = "https://neillugovoy.com/arctan.png">
 
 # Demos
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Avs59YVElMI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-# Conclusion
+<iframe width="560" height="315" src="https://www.youtube.com/embed/13Bkve3_Uo4" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+# Results and Conclusion
+In spite of challenges such as a bumpy floor that caused the ball to curve and the speed limitations of the Turtlebot, we were able to achieve our initial design goal. As shown in our videos, we were able to have successful interceptions in challenging scenarios up to 7 times consecutively. All modules were running at 30 Hz, which is as fast as the RealSense publishes. Additionally, overall we found that the combination of our simple prediction, planning, and control modules and the global feedback loop worked very well for our application. Anything that these simplicities could not capture was caught by the closed loop.  
+
+Extensions to our work would include using the Turtlebot's onboard camera to improve our estimate of the ball's location and planning to hit the ball to a desired location instead of simple interception. 
+
 
 # Team
 ### Angela Wang
