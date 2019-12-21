@@ -85,11 +85,11 @@ $y_{ball}(t) = y_{0, ball} + v_{y, ball}t$
 
 ## Problem
 
-There is noise in the position estimate. If the position estimate ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). 
+There is noise in the position estimate. If the position estimate of the ball moves just a centimeter when it is stationary the velocity estimate will be 0.3 m/s (assuming it runs at 30 Hz). Thus even for a stationary ball we noticed non-negligible velocity estimates in random directions and when moving the velocity estimate would vary dramatically.
 
 ## Solution
 
-From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise is near zero mean. 
+From a signal processing perspective taking a numerical derivative of a noisy signal amplifies high frequency noise. Thus we implemented a moving average which is a low-pass filter. Intuitively with a noisy signal the variance is high but its mean is close to the true signal assuming the noise has a near zero mean. 
 
 ## New Problem
 
@@ -116,7 +116,7 @@ This method seeks to find a point where the two points intersect exactly thus so
 <img src = "https://neillugovoy.com/far_away_interception.png">
 
 ## Solution
-Instead of finding an exact intersection we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
+Instead of finding an exact interception we want to find a point where the two objects are sufficiently close. Additionally we want to choose the closest and lowest control solution rather than going far away and using a lot of effort to get a slightly better solution.
 
 Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at different speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
 
@@ -124,24 +124,17 @@ Thus we just simulated where the ball would be at times within 1 second and chec
 
 # Control and Actuation
 
-Given the interception point outputted by our planning module, we implemented a simple proportional controller to give the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
+Given the interception point outputted by our planning module, we implemented a simple proportional controller to move the robot to that point as quickly as possible. The controller gives the robot a linear and angular velocity control command. We then had to tune our gains accordingly.
 
 ### Problem
-With our proportional controller, our TurtleBot would not aggressive enough when it got closer to ball. If the TurtleBot slowed down near the ball, it would get close to intercepting the ball, but never actually hitting it.
+With a proportional controller, the Turtlebot would slow down dramatically when it got close to the ball.
 
-<img src = "proportional_control.gif">
+<img src = "https://neillugovoy.com/proportional_control.gif">
 
 ### Solution
-1. To make our controller act more aggressive, we decided to put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at most distances away from the ball. 
+To make our controller act more aggressively, we put our error through an arctan function. This would make our controller act more like a smoothed bang-bang controller, because the Turtlebot will be moving close to full speed at distances far away from the ball. We also increased the frequency of the controller from 10 Hz to 30 Hz so that the controller could perform fine adjustments faster to compensate for being more aggressive.
 
-<img src = "arctan.PNG">
-
-<img src = "aggressive_controller.PNG">
-
-
-
-
-
+<img src = "https://neillugovoy.com/arctan.png">
 
 # Demos
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
