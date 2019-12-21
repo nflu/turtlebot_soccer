@@ -94,7 +94,9 @@ This adds a tunable parameter of how big to make the window for the average. A l
 
 We tuned the size of the window to improve this tradeoff and also set a cutoff for how old of state estimates we would use. Thus if we didn't receive state estimates for a while we would throw out old samples. To fill up the window with values we started the ball in the frame before rolling it.
 
-<!-- TODO include graphic here -->
+<img src = "https://neillugovoy.com/prediction.gif">
+
+The blue sphere is the predicted location of the ball in 1 second.
 
 
 # Planning
@@ -149,6 +151,10 @@ for t in times:
         if dist < epsilon:
             return turtlebot_next_pt
 ```
+
+<img src = "https://neillugovoy.com/planning.gif">
+
+You can see in this gif the planned interception point in green. While the robot is near the ball the point is near both of them, but once it goes past the robot the interception point is far away. This was an early iteration of the controller. See next section for details.
 
 # Control and Actuation
 
