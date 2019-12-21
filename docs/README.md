@@ -52,10 +52,10 @@ The yellow circle is our prediction of the ball location. The red contrail is ma
 Then we get the coordinates of the center pixel of that circle (u, v).
 ## Point Localization and Depth
 If we assume that the image is generated via a pinhole camera model then the following equations describe the relationship between a point in 3D space (x,y,z) in the camera optical frame and the pixel (u,v) it maps to in the image.
-<img src = "https://neillugovoy.com/pinhole.PNG"/>
+<img src = "https://neillugovoy.com/pinhole_camera.png"/>
 
 Where K is the camera matrix. Note that K is upper triangular with 1 in the bottom row 
-<img src = "https://neillugovoy.com/k_matrix.PNG"/>
+<img src = "https://neillugovoy.com/k_matrix.png"/>
 
 thus w=z which is the depth of (u,v) which we can get from the depth image! Thus we can construct solve the linear system for the point in the camera frame!
 
