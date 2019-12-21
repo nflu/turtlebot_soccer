@@ -200,7 +200,7 @@ Here, the purple dots are measurements of the ball and each black dot is the rob
 
 
 # Results and Conclusion
-In spite of challenges such as a bumpy floor that caused the ball to curve and the speed limitations of the Turtlebot, we were able to achieve our initial design goal. As shown in our videos, we were able to have successful interceptions in challenging scenarios up to 7 times consecutively. All modules were running at 30 Hz, which is as fast as the RealSense publishes. Additionally, overall we found that the combination of our simple prediction, planning, and control modules and the global feedback loop worked very well for our application. Anything that these simplicities could not capture was caught by the closed loop.  
+In spite of challenges such as a bumpy floor that caused the ball to curve and the speed limitations of the Turtlebot, we were able to achieve our initial design goal. We were able to have successful interceptions in challenging scenarios up to 7 times consecutively. All modules were running at 30 Hz, which is as fast as the RealSense publishes. Additionally, overall we found that the combination of our simple prediction, planning, and control modules and the global feedback loop worked very well for our application. Anything that these simplicities could not capture was caught by the closed loop.  
 
 Extensions to our work would include using the Turtlebot's onboard camera to improve our estimate of the ball's location and planning to hit the ball to a desired location instead of simple interception. 
 
