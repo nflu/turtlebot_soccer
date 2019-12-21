@@ -185,6 +185,8 @@ Initially we tried to use a spline planner that took into account the fact that 
 
 <img src = "https://neillugovoy.com/spline_simulation.gif">
 
+Here, the purple dots are measurements of the ball and each black dot is the robot at a successive time step as it moves along the spline path (red dashed curve). 
+
 # Demos
 <iframe width="560" height="315" src="https://www.youtube.com/embed/Avs59YVElMI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
@@ -207,7 +209,7 @@ Extensions to our work would include using the Turtlebot's onboard camera to imp
 ### Angela Wang
 Angela is a fourth year EECS major interested in signals and systems. She does robotic simulation research with Professor Ron Fearing and communication network research with Professor Shyam Parekh. She contributed to all of the perception, planning, prediction, and control modules. 
 ### Khadijah Flowers
-Khadijah is a fourth year CS major. 
+Khadijah is a fourth year CS major. She helped with the prediction and planning modules.
 ### Neil Lugovoy
 Neil is a fourth year CS major who does research in Professor Claire Tomlin's lab on safe learning in robotics. In this project, he contributed to all of the perception, planning, prediction, and control modules and also worked heavily on integration. 
 ### Sampada Deglurkar
