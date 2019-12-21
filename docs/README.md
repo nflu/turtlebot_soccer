@@ -8,7 +8,7 @@ Imagine a robot playing soccer. Nearly every action requires the robot to first 
 
 The challenge from this project is to have working perception, prediction, planning, as well as control modules and then to integrate these modules into a full stack. Overall, our approach was one of a **feedback loop** involving this full stack in order to have the robot interact with the ball in real time and also so that our design would be robust to modeling errors. 
 
-<img src = "https://neillugovoy.com/intro_image.PNG"/>
+<img src = "https://neillugovoy.com/success_5.gif">
 
 Thus, our project is broadly applicable to any robotic domain in a system must perform tasks in dynamic environments and in which vision is a main source of sensing. These environments can not only include moving objects such as the ball in our case, but also other agents, whose motion can also be predicted forward in time with some extension to our work. 
 
@@ -191,6 +191,13 @@ Initially we tried to use a spline planner that took into account the fact that 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/13Bkve3_Uo4" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+<img src = "https://neillugovoy.com/success_1.gif">
+<img src = "https://neillugovoy.com/success_2.gif">
+<img src = "https://neillugovoy.com/success_3.gif">
+<img src = "https://neillugovoy.com/success_4.gif">
+<img src = "https://neillugovoy.com/success_5.gif">
+
 
 # Results and Conclusion
 In spite of challenges such as a bumpy floor that caused the ball to curve and the speed limitations of the Turtlebot, we were able to achieve our initial design goal. As shown in our videos, we were able to have successful interceptions in challenging scenarios up to 7 times consecutively. All modules were running at 30 Hz, which is as fast as the RealSense publishes. Additionally, overall we found that the combination of our simple prediction, planning, and control modules and the global feedback loop worked very well for our application. Anything that these simplicities could not capture was caught by the closed loop.  
