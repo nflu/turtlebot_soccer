@@ -136,6 +136,9 @@ To make our controller act more aggressively, we put our error through an arctan
 
 <img src = "https://neillugovoy.com/arctan.png">
 
+
+<img src = "spline_simulation.gif">
+
 # Demos
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AVnXz0teLzA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
