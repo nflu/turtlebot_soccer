@@ -49,15 +49,15 @@ From the mask we found all minimum enclosing circles of the connected components
 <img src = "https://neillugovoy.com/perception_color_thresholding.PNG"/>
 The yellow circle is our prediction of the ball location. The red contrail is made up of our last twenty predictions. 
 
-Then we get the coordinates of the center pixel of that circle $(u, v)$.
+Then we get the coordinates of the center pixel of that circle (u, v).
 ## Point Localization and Depth
-If we assume that the image is generated via a pinhole camera model then the following equations describe the relationship between a point in 3D space $(x,y,z)$ in the camera optical frame and the pixel $(u,v)$ it maps to in the image.
-$$\begin{bmatrix} u'\\v'\end{bmatrix}=w\begin{bmatrix}u \\ v\end{bmatrix} $$
-$$\begin{bmatrix}u'\\v'\\w\end{bmatrix} = K \begin{bmatrix}x\\y\\z\end{bmatrix} $$
-Where $K$ is the camera matrix. Note that $K$ is upper triangular with $1$ in the bottom row 
-$$K = \begin{bmatrix} f_x & f_y & x_0\\ 0 & f_y & y_0\\ 0& 0 & 1
-			\end{bmatrix} $$
-thus $w=z$ which is the depth of $(u,v)$ which we can get from the depth image! Thus we can construct $[u', v', w]^{T}$ and solve the linear system for $[x,y,z]^{T}$!
+If we assume that the image is generated via a pinhole camera model then the following equations describe the relationship between a point in 3D space (x,y,z) in the camera optical frame and the pixel (u,v) it maps to in the image.
+<img src = "https://neillugovoy.com/pinhole.PNG"/>
+
+Where K is the camera matrix. Note that K is upper triangular with 1 in the bottom row 
+<img src = "https://neillugovoy.com/k_matrix.PNG"/>
+
+thus w=z which is the depth of (u,v) which we can get from the depth image! Thus we can construct solve the linear system for the point in the camera frame!
 
 <img src = "https://neillugovoy.com/perception_rviz.PNG"/>
 This rviz screen shows all the frames that we had. AR Marker 13 defines the world frame, the pink point is our prediction of where the soccer ball is, and AR Marker 4 is where the TurtleBot is. We can also see the camera optical frame relative to the world frame. 
@@ -79,9 +79,6 @@ The perception works quite well and if it isn't displaying images will run as fa
 # Prediction
 
 Now that we had estimates of where the ball is we wanted to predict where it is going. We used a linear model of the ball in that we assumed that the ball moves at a constant speed and used the two most recent state estimates to calculate the velocity.
-
-$$x_{ball}(t) = x_{0, ball} + v_{x, ball}t$$
-$$y_{ball}(t) = y_{0, ball} + v_{y, ball}t$$
 
 ## Problem
 
@@ -120,6 +117,10 @@ Instead of finding an exact interception we want to find a point where the two o
 
 Thus we just simulated where the ball would be at times within 1 second and checked how close the turtlebot could get going at a constant speeds and picked the earliest and lowest speed point. Because new predictions were constantly being generated for new measurements, the robot would be constantly replanning in response to new information about where the ball was and where it was going. 
 
+<img src = "https://neillugovoy.com/planning.png">
+
+In this diagram (not to scale) we see the different points the ball will be at various times and the radius of acceptable interception distance around each point. The dotted line indicates where the robot will be.
+
 ### Problem
 If we assume that the TurtleBot could move at one speed, the interception point will change to a different point that is further away. This is because we assume that the Turtlebot can only move at one speed and not slower, so as we approach the soccer ball the point moves.
 
@@ -130,7 +131,6 @@ In this gif you can see that the TurtleBot approaches the soccer ball, then back
 ### Solution
 We assume that the TurtleBot moves in a straight line now at various nominal speeds. Then we iterate through the speeds, from slowest to fastest, and find the first point where the distance between the TurtleBot and soccer ball is within our desired threshold. 
 
-<img src = "https://neillugovoy.com/planning.png">
 
 ```
 Pseudocode:
