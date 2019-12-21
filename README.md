@@ -1,6 +1,6 @@
 # turtlebot_soccer
 
-Please see our website [here](https://nflu.github.io/turtlebot_soccer)!
+Please see our website [here](https://nflu.github.io/turtlebot_soccer/README)!
 
 ## Turtlebot
 
