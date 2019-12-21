@@ -195,8 +195,6 @@ Initially we tried to use a spline planner that took into account the fact that 
 <img src = "https://neillugovoy.com/success_1.gif">
 <img src = "https://neillugovoy.com/success_2.gif">
 <img src = "https://neillugovoy.com/success_3.gif">
-<img src = "https://neillugovoy.com/success_4.gif">
-<img src = "https://neillugovoy.com/success_5.gif">
 
 
 # Results and Conclusion
@@ -209,4 +207,6 @@ Extensions to our work would include using the Turtlebot's onboard camera to imp
 ### Angela Wang
 ### Khadijah Flowers
 ### Neil Lugovoy
+Neil is a fourth year CS major who does research in Professor Claire Tomlin's lab on safe learning in robotics. In this project, he contributed to all of the perception, planning, and control modules and also worked heavily on integration. 
 ### Sampada Deglurkar
+Sampada is a fourth year EECS major. She worked mainly on the prediction, planning, and control sides of the project and also helped with integration.
