@@ -67,7 +67,7 @@ they should all be around 30 hz. Sometimes the camera will overheat and depth an
 
 `rosrun planning main.py --turtlebot_frame {turtlebot_frame}`
 
-where `{turtlebot_frame}` is the frame of the turtlebot. 
+where `{turtlebot_frame}` is the frame of the turtlebot. You can use the ar tag on top of the turtlebot as the frame or use a static transform publisher. 
 
 ### Interception
 `rosrun turtlebot_control turtlebot_control.py {color} {turtlebot_frame}`

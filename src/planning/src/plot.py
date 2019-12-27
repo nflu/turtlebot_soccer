@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 """
-Main file for perception module
-
-run this file by running
-
-rosrun perception main.py
-
+this file is for debugging the planning by plotting what it produced. I used this to catch some
+bugs but I don't have the time to clean it up unfortunately.
 """
 
 import rospy
@@ -101,10 +97,10 @@ class PlottingProcess:
             self.intersects = np.array(self.intersects)
             self.avgs = np.array(self.avgs)
             ax = plt.gca()
-            plt.scatter(self.preds[:,0], self.preds[:,1], label = 'predicted_point')
-            plt.scatter(self.states[:,0], self.states[:,1], label = 'state_estimate')
-            plt.scatter(self.intersects[:,0], self.intersects[:,1], label = 'intersect') 
-            plt.scatter(self.avgs[:,0],self.avgs[:,1],label = 'average_state_est')
+            plt.scatter(self.preds[:, 0], self.preds[:, 1], label='predicted_point')
+            plt.scatter(self.states[:, 0], self.states[:, 1], label='state_estimate')
+            plt.scatter(self.intersects[:, 0], self.intersects[:, 1], label='intersect')
+            plt.scatter(self.avgs[:, 0], self.avgs[:, 1], label='average_state_est')
             plt.scatter([trans[0]], [trans[1]], label='turtlebot')
             ax.legend()
             plt.show()
@@ -118,14 +114,13 @@ class PlottingProcess:
 
 def main():
     rospy.init_node('plotting')
-    plotting = PlottingProcess(state_estimate_topic = '/state_estimate',
-                              prediction_topic = '/predicted_point',
-                              intersection_topic = '/intersection_point',
-                              average_state_est_topic = '/avg_state_est')
+    plotting = PlottingProcess(state_estimate_topic='/state_estimate',
+                               prediction_topic='/predicted_point',
+                               intersection_topic='/intersection_point',
+                               average_state_est_topic='/avg_state_est')
                                 
     r = rospy.Rate(1000)
 
-    # run perception
     while not rospy.is_shutdown():
         plotting.publish_once_from_queue()
         r.sleep()

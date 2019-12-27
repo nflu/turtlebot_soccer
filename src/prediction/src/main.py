@@ -9,17 +9,15 @@ rosrun prediction main.py
 """
 
 from collections import deque
-
 import rospy
-
 from geometry_msgs.msg import PointStamped
-from nav_msgs.msg import Path
 import numpy as np
-import time
 import threading
 from prediction.msg import point_vel
+import argparse
 
 SEC_TO_NSEC = 1e9
+
 
 def make_point_stamped(x, y, z, now, frame_id):
     point = PointStamped()
@@ -30,11 +28,10 @@ def make_point_stamped(x, y, z, now, frame_id):
     point.header.frame_id = frame_id
     return point
 
-def stamp_to_secs(stamp):
-    return np.float128(stamp.secs + stamp.nsecs / SEC_TO_NSEC)
 
 def stamp_to_nsecs(stamp):
     return np.float128(stamp.secs * SEC_TO_NSEC + stamp.nsecs)
+
 
 class PredictionProcess:
 
@@ -123,7 +120,6 @@ class PredictionProcess:
                                                          now=now, frame_id=frame_id)
 
                     point_v = point_vel()
-                    # TODO maybe change to averaged_point_2
                     point_v.point.x = x
                     point_v.point.y = y
                     point_v.point.z = z
@@ -150,7 +146,7 @@ class PredictionProcess:
                         print("Delay from last state estimate to prediction in seconds:",
                             (prediction_timestamp - self.times[-1]) / SEC_TO_NSEC)
                         print('delta t in seconds:', delta_t / SEC_TO_NSEC)
-                elif self.verbosity >=1:
+                elif self.verbosity >= 1:
                     print('throw away prediction with delta t:', delta_t / SEC_TO_NSEC, 
                         'max_delta_t is:', self.max_delta_t / SEC_TO_NSEC)
                 self.points.pop(0)
@@ -159,7 +155,6 @@ class PredictionProcess:
                 secs = state_estimate.header.stamp.secs
                 nsecs = state_estimate.header.stamp.nsecs
                 self.times.append(np.float128(SEC_TO_NSEC * secs + nsecs))
-
             else:
                 if self.verbosity >= 1:
                     print('not enough points yet')
@@ -169,26 +164,32 @@ class PredictionProcess:
                 self.times.append(np.float128(SEC_TO_NSEC * secs + nsecs))
 
 
-
-
 def main():
+    # set up command line arguments
+    parser = argparse.ArgumentParser(description="Prediction Module")
+    parser.add_argument('--verbosity', type=int, help='defaults to 2')
+
+    # parse arguments
+    args = parser.parse_args()
+    verbosity = args.verbosity if args.verbosity is not None else 2
 
     # subscribing topics
     state_est_topic = '/state_estimate'
 
     # publishing topics
-    prediction_topic = '/predicted_path'   # Gives velocity
-    predicted_point_topic = '/predicted_point'
-    averaged_state_est_topic = '/avg_state_est'  # Gives most recent 5 sensor measurements averaged up
-    # setup ros subs, pubs and connect to realsense
+    prediction_topic = '/ball_point_vel'  # position and velocity of ball
+    predicted_point_topic = '/predicted_point'  # predicted location of ball in 1 sec for debugging
+    averaged_state_est_topic = '/avg_state_est'  # smoothed estimate of ball location for debugging
+
+    # setup ros subs, pubs and start ros node
     rospy.init_node('prediction')
     process = PredictionProcess(state_est_topic=state_est_topic,
                                 predicted_point_topic=predicted_point_topic,
                                 prediction_topic=prediction_topic,
-                                averaged_state_est_topic=averaged_state_est_topic)
+                                averaged_state_est_topic=averaged_state_est_topic,
+                                verbosity=verbosity)
     r = rospy.Rate(1000)
 
-    # run perception
     while not rospy.is_shutdown():
         process.publish_once_from_queue()
         r.sleep()

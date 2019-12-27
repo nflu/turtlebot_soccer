@@ -158,7 +158,6 @@ class RealsensePerceptionProcess:
                 trans, rot = self.listener.lookupTransform(self.world_frame,
                                                            self.camera_frame,
                                                            rospy.Time(0))
-                # TODO what does this rospy.Time(0) do?
                 # convert quaternion into 3x3 matrix
                 rot = tf.transformations.quaternion_matrix(rot)[:3, :3]
             except (tf.LookupException,
@@ -253,7 +252,7 @@ def main():
     state_est_topic = '/state_estimate'
     cam_state_est_topic = '/state_estimate_camera_frame'
 
-    # setup ros subs, pubs and connect to realsense
+    # setup ros subs, pubs and start ros node
     rospy.init_node('realsense_listener')
     process = RealsensePerceptionProcess(world_frame=world_frame,
                                          camera_frame=camera_frame,
