@@ -17,11 +17,7 @@ then run
 
 `roslaunch turtlebot_bringup minimal.launch --screen`
 
-and
-
-`roslaunch turtlebot_bringup 3dsensor.launch`
-
-teleop:
+If you want to check things are working you can run teleop with:
 
 `roslaunch turtlebot_teleop keyboard_teleop.launch --screen`
 
@@ -29,11 +25,7 @@ teleop:
 
 Grab a big tripod instead of the small one that comes with the realsense.
 
-Remember to set 
-
-`export ROS_MASTER_URI=http://[TurtleID].local:11311`
-
-Make sure you have the realsense plugged into a USB 3 port through a USB 3 cable
+Make sure you have the realsense plugged into a USB 3 port through a USB 3 cable.
 
 To run the perception module run the following command: 
 
@@ -76,8 +68,6 @@ they should all be around 30 hz. Sometimes the camera will overheat and depth an
 `rosrun planning main.py --turtlebot_frame {turtlebot_frame}`
 
 where `{turtlebot_frame}` is the frame of the turtlebot. 
-
-## Control
 
 ### Interception
 `rosrun turtlebot_control turtlebot_control.py {color} {turtlebot_frame}`
