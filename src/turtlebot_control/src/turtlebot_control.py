@@ -10,7 +10,7 @@ import ros_numpy
 import argparse
 
 SEC_TO_NSEC = 1e9
-
+LINEAR_OFFSET = 0.3
 
 def stamp_to_secs(stamp):
     return np.float128(stamp.secs + stamp.nsecs / SEC_TO_NSEC)
@@ -91,23 +91,24 @@ class Controller:
         self.most_recent_goal = self.messages.pop() if len(self.messages) else self.most_recent_goal
         if self.most_recent_goal is not None:
             try:
+                # get the rotation and translation from the goal frame to turtlebot frame
                 goal_frame = self.most_recent_goal.header.frame_id
-                time = stamp_to_secs(self.most_recent_goal.header.stamp)
-                point = self.most_recent_goal.point
-                trans = self.tfBuffer.lookup_transform(self.turtlebot_frame, goal_frame,
+                goal_point = self.most_recent_goal.point
+                transform = self.tfBuffer.lookup_transform(self.turtlebot_frame, goal_frame,
                                                        rospy.Time())
-                rot = ros_numpy.numpify(trans.transform.rotation)
+                rot = ros_numpy.numpify(transform.transform.rotation)
                 rot = np.array(tf.transformations.quaternion_matrix(rot)[:3, :3])
-                # Process trans to get your state error
-                # Generate a control command to send to the robot
-                msg = Twist()
-                point = np.dot(rot, ros_numpy.numpify(point)) + ros_numpy.numpify(trans.transform.translation)
+                translation = transform.transform.translation
 
-                #                 
-                error = np.array([point[1] + 0.3, point[0]])
+                # since turtlebot frame origin is at center of bot, error is goal point in bot frame
+                error = np.dot(rot, ros_numpy.numpify(goal_point)) + ros_numpy.numpify(translation)
+                error = np.array([error[1] + LINEAR_OFFSET, error[0]])
 
                 # calculate control from error
+                msg = Twist()
+                time = stamp_to_secs(self.most_recent_goal.header.stamp)
                 msg.linear.x, msg.angular.z = self.control_law(error, time)
+
                 if self.verbosity >= 1:
                     print('linear control:', msg.linear.x, 'angular control:', msg.angular.z)
                 self.pub.publish(msg)
