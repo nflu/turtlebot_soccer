@@ -10,8 +10,9 @@ The challenge from this project is to have working perception, prediction, plann
 
 <img src = "https://neillugovoy.com/success_5.gif">
 
-Thus, our project is broadly applicable to any robotic domain in a system must perform tasks in dynamic environments and in which vision is a main source of sensing. These environments can not only include moving objects such as the ball in our case, but also other agents, whose motion can also be predicted forward in time with some extension to our work. 
+[Project Website](https://nflu.github.io/turtlebot_soccer/README/)
 
+[Project Code](https://github.com/nflu/turtlebot_soccer)
 
 ## Autonomy Stack
 We split our task into these steps. Our project is organized by having each of these blocks as a distinct ROS package.
@@ -62,8 +63,6 @@ This rviz screen shows all the frames that we had. AR Marker 13 defines the worl
 
 ### Problem
 The depth image was very noisy for anything more than about 1.5 meters away. We observed variance of up to a meter on a single point in a stationary frame.
-
-<!-- TODO insert noisy depth image -->
 
 ### Solution
 1. We read about how the depth camera works. It uses an IR blaster and two IR cameras. In rooms with a lot of harsh lighting (such as the lab room) these sensors can be overexposed. We also read [this doc](https://www.intel.com/content/dam/support/us/en/documents/emerging-technologies/intel-realsense-technology/BKMs_Tuning_RealSense_D4xx_Cam.pdf) on tuning the Realsense and tuned the Realsense parameters for a couple hours until it worked better
